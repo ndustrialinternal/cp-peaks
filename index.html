@@ -92,7 +92,7 @@
         // Adjust date‐range here if needed (UTC). Currently: 2025-06-01 → 2025-09-11
         const urlPJM =
           'https://peaks.api.ndustrial.io/demand'
-          + '?and=(time.gte.2025-06-01T00%3A00%3A00.000Z,time.lte.2025-09-30T23%3A59%3A59.000Z)'
+          + '?and=(time.gte.2025-06-01T04%3A00%3A00.000Z,time.lte.2025-10-01T03%3A59%3A59.000Z)'
           + '&region=eq.PJM'
           + '&order=time';
 
@@ -190,7 +190,7 @@
         // Date range for June 1 → September 30 (UTC)
         const urlERCOT =
           'https://peaks.api.ndustrial.io/demand'
-          + '?and=(time.gte.2025-06-01T00%3A00%3A00.000Z,time.lte.2025-09-30T23%3A59%3A59.999Z)'
+          + '?and=(time.gte.2025-06-01T04%3A00%3A00.000Z,time.lte.2025-10-01T03%3A59%3A59.999Z)'
           + '&region=eq.ERCO'
           + '&order=time';
 
