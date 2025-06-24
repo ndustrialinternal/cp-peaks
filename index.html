@@ -4,74 +4,29 @@
   <meta charset="UTF-8" />
   <title>Coincident Peak Program Current Peaks</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 2rem;
-      background-color: #f9f9f9;
-      color: #333;
-    }
-    h1 {
-      margin-bottom: 0.5rem;
-    }
-    h2 {
-      margin-bottom: 1rem;
-      font-size: 0.9rem;
-      color: #555;
-    }
-    h3 {
-      margin-top: 2rem;
-      margin-bottom: 0.5rem;
-    }
-    section {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-    }
-    #loading, #loading-ercot {
-      font-style: italic;
-      color: #666;
-    }
-    .error {
-      color: #c00;
-      margin-top: 0.5rem;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
-      margin-bottom: 1.5rem;
-    }
-    th, td {
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      text-align: center;
-    }
-    th {
-      background-color: #f0f0f0;
-    }
+    body { font-family: Arial, sans-serif; padding: 2rem; background-color: #f9f9f9; color: #333; }
+    h1 { margin-bottom: 0.5rem; }
+    h2 { margin-bottom: 1rem; font-size: 0.9rem; color: #555; }
+    h3 { margin-top: 2rem; margin-bottom: 0.5rem; }
+    section { margin-top: 2rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
+    #loading, #loading-ercot { font-style: italic; color: #666; }
+    .error { color: #c00; margin-top: 0.5rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; }
+    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
+    th { background-color: #f0f0f0; }
   </style>
 </head>
 <body>
-  <button id="alerts-button" onclick="window.location.href='https://ndustrialinternal.github.io/amp-cp-alerts/';">
-    Open Amp CP Alerts
-  </button>
+  <button id="alerts-button" onclick="window.location.href='https://ndustrialinternal.github.io/amp-cp-alerts/';">Open Amp CP Alerts</button>
 
   <!-- PJM Section -->
   <section>
     <h1>PJM Demand Top 5 Daily Peaks (ET)</h1>
-    <div id="loading">Loading PJM data…</div>
-    <div id="error" class="error" style="display: none;"></div>
-    <div id="output" style="display: none;">
+    <div id="loading-pjm">Loading PJM data…</div>
+    <div id="error-pjm" class="error" style="display:none;"></div>
+    <div id="output-pjm" style="display:none;">
       <table>
-        <thead>
-          <tr>
-            <th>Date (ET)</th>
-            <th>Time (ET)</th>
-            <th>Value (MW)</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Date (ET)</th><th>Time (ET)</th><th>Value (MW)</th></tr></thead>
         <tbody id="rows-pjm"></tbody>
       </table>
     </div>
@@ -82,165 +37,86 @@
     <h1>ERCOT Demand Top 5 Intervals per Month (ET)</h1>
     <h2>Top 5 15-minute intervals each month; first one bolded</h2>
     <div id="loading-ercot">Loading ERCOT data…</div>
-    <div id="error-ercot" class="error" style="display: none;"></div>
-    <div id="output-ercot" style="display: none;">
-      <div id="tables-ercot"></div>
-    </div>
+    <div id="error-ercot" class="error" style="display:none;"></div>
+    <div id="output-ercot" style="display:none;"><div id="tables-ercot"></div></div>
   </section>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const BEARER_TOKEN = 'bda3a30f30804e22a62e4637700bab54';
+      // Separate tokens for PJM and ERCOT
+      const PJM_TOKEN = 'YOUR_PJM_BEARER_TOKEN';
+      const ERCOT_TOKEN = 'YOUR_ERCOT_API_KEY';
 
-      // ─── 1) PJM FETCH / PROCESS ─────────────────────────────────────────────
+      // PJM Fetch
       (function fetchPJM() {
-        const urlPJM =
-          'https://peaks.api.ndustrial.io/demand'
+        const url = 'https://peaks.api.ndustrial.io/demand'
           + '?and=(time.gte.2025-06-01T04%3A00%3A00.000Z,time.lte.2025-10-01T03%3A59%3A59.000Z)'
-          + '&region=eq.PJM'
-          + '&order=time';
-
-        fetch(urlPJM, {
-          method: 'GET',
-          headers: { 'Authorization': 'Bearer ' + BEARER_TOKEN }
-        })
-        .then(resp => {
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
-          return resp.json();
-        })
-        .then(rawArray => {
-          rawArray.sort((a, b) => Number(b.value) - Number(a.value));
-          const seenDatesET = new Set();
-          const topFive = [];
-          for (const entry of rawArray) {
-            if (topFive.length >= 5) break;
-            const dtUTC = new Date(entry.time);
-            const dateET = dtUTC.toLocaleDateString('en-US', {
-              timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
-            });
-            if (!seenDatesET.has(dateET)) {
-              seenDatesET.add(dateET);
-              const timeET = dtUTC.toLocaleString('en-US', {
-                timeZone: 'America/New_York',
-                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
-              });
-              topFive.push({ dateET, timeET, valueMW: Number(entry.value) });
+          + '&region=eq.PJM&order=time';
+        fetch(url, { headers: { 'Authorization': 'Bearer ' + PJM_TOKEN } })
+          .then(r => { if(!r.ok) throw new Error(r.statusText); return r.json(); })
+          .then(arr => {
+            arr.sort((a,b) => b.value - a.value);
+            const seen = new Set(), top = [];
+            for(const e of arr) {
+              if(top.length>=5) break;
+              const dt = new Date(e.time);
+              const date = dt.toLocaleDateString('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+              if(!seen.has(date)) { seen.add(date);
+                top.push({ date, time: dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'}), value:e.value });
+              }
             }
-          }
-          const tbodyPJM = document.getElementById('rows-pjm');
-          tbodyPJM.innerHTML = '';
-          topFive.forEach(item => {
-            const tr = document.createElement('tr');
-            [ item.dateET,
-              item.timeET,
-              item.valueMW.toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 })
-            ].forEach(text => {
-              const td = document.createElement('td');
-              td.innerText = text;
-              tr.appendChild(td);
+            const tb = document.getElementById('rows-pjm'); tb.innerHTML='';
+            top.forEach(r=>{
+              const tr=document.createElement('tr');
+              [r.date, r.time, r.value.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})]
+                .forEach(t=>{const td=document.createElement('td'); td.innerText=t; tr.appendChild(td);});
+              tb.appendChild(tr);
             });
-            tbodyPJM.appendChild(tr);
-          });
-          document.getElementById('loading').style.display = 'none';
-          document.getElementById('output').style.display = 'block';
-        })
-        .catch(err => {
-          document.getElementById('loading').style.display = 'none';
-          const eDiv = document.getElementById('error');
-          eDiv.innerText = 'Error: ' + err.message;
-          eDiv.style.display = 'block';
-        });
+            document.getElementById('loading-pjm').style.display='none';
+            document.getElementById('output-pjm').style.display='block';
+          })
+          .catch(e=>{document.getElementById('loading-pjm').style.display='none'; const err=document.getElementById('error-pjm'); err.innerText='Error: '+e.message; err.style.display='block';});
       })();
 
-      // ─── 2) ERCOT FETCH / PROCESS ────────────────────────────────────────────
+      // ERCOT Fetch
       (function fetchERCOT() {
-        const urlERCOT =
-          'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
-          + '?start_time=2025-06-01T01%3A00%3A00'
-          + '&end_time=2025-10-01'
-          + '&timezone=market';
-
-        fetch(urlERCOT, { headers: { 'x-api-key': BEARER_TOKEN } })
-        .then(r => {
-          if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-          return r.json();
-        })
-        .then(resp => {
-          const raw = resp.data;
-          // compute ERCOT CP manually
-          raw.forEach(d => {
-            d.cp = Number(d.internal_generation)
-                 + Number(d.dc_tie_imports)
-                 - Number(d.dc_tie_exports)
-                 - Number(d.wholesale_storage_load);
-          });
-          raw.sort((a, b) => b.cp - a.cp);
-
-          const months = ['June 2025', 'July 2025', 'August 2025', 'September 2025'];
-          const container = document.getElementById('tables-ercot');
-          container.innerHTML = '';
-
-          months.forEach(monthKey => {
-            const monthSlice = raw
-              .filter(d => {
-                const dt = new Date(d.interval_start_local);
-                return dt.toLocaleString('en-US', {
-                  timeZone: 'America/New_York', year: 'numeric', month: 'long'
-                }) === monthKey;
-              })
-              .slice(0, 5);
-            if (!monthSlice.length) return;
-
-            const title = document.createElement('h3');
-            title.innerText = monthKey;
-            container.appendChild(title);
-
-            const table = document.createElement('table');
-            const thead = document.createElement('thead');
-            const headerRow = document.createElement('tr');
-            ['Start (ET)', 'CP Load (MW)', 'Gen (MW)', 'DC In (MW)', 'DC Out (MW)', 'WSL (MW)']
-              .forEach(text => {
-                const th = document.createElement('th'); th.innerText = text; headerRow.appendChild(th);
+        const url = 'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
+          + '?start_time=2025-06-01T01%3A00%3A00&end_time=2025-10-01&timezone=market';
+        fetch(url, { headers: { 'x-api-key': ERCOT_TOKEN } })
+          .then(r=>{ if(!r.ok) throw new Error(r.statusText); return r.json(); })
+          .then(resp=>{
+            const arr = resp.data;
+            // compute CP manually
+            arr.forEach(d=>{ d.cp = d.internal_generation + d.dc_tie_imports - d.dc_tie_exports - d.wholesale_storage_load; });
+            arr.sort((a,b)=>b.cp-a.cp);
+            const months=['June 2025','July 2025','August 2025','September 2025'];
+            const cont=document.getElementById('tables-ercot'); cont.innerHTML='';
+            months.forEach(m=>{
+              const slice = arr.filter(d=>{
+                const dt=new Date(d.interval_start_local);
+                return dt.toLocaleString('en-US',{timeZone:'America/New_York',year:'numeric',month:'long'})===m;
+              }).slice(0,5);
+              if(!slice.length) return;
+              const h3=document.createElement('h3'); h3.innerText=m; cont.appendChild(h3);
+              const tbl=document.createElement('table'), thd=document.createElement('thead'), hdr=document.createElement('tr');
+              ['Start (ET)','CP Load','Gross MW','Gen MW','DC In','DC Out','WSL'].forEach(t=>{const th=document.createElement('th'); th.innerText=t; hdr.appendChild(th);});
+              thd.appendChild(hdr); tbl.appendChild(thd);
+              const tbd=document.createElement('tbody');
+              slice.forEach((d,i)=>{
+                const tr=document.createElement('tr'), bold=i===0;
+                [ d.interval_start_local.replace('T',' ').slice(0,19), d.cp, d.operational_load, d.internal_generation, d.dc_tie_imports, d.dc_tie_exports, d.wholesale_storage_load ]
+                  .forEach(val=>{ const td=document.createElement('td');
+                    td.innerText= typeof val==='number'? val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3}) : val;
+                    if(bold) td.style.fontWeight='bold'; tr.appendChild(td);
+                  });
+                tbd.appendChild(tr);
               });
-            thead.appendChild(headerRow);
-            table.appendChild(thead);
-
-            const tbody = document.createElement('tbody');
-            monthSlice.forEach((d, idx) => {
-              const tr = document.createElement('tr');
-              const bold = idx === 0;
-              [
-                d.interval_start_local.replace('T',' ').slice(0,19),
-                d.cp,
-                d.internal_generation,
-                d.dc_tie_imports,
-                d.dc_tie_exports,
-                d.wholesale_storage_load
-              ].forEach(val => {
-                const td = document.createElement('td');
-                if (typeof val === 'number') {
-                  td.innerText = val.toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 });
-                } else {
-                  td.innerText = val;
-                }
-                if (bold) td.style.fontWeight = 'bold';
-                tr.appendChild(td);
-              });
-              tbody.appendChild(tr);
+              tbl.appendChild(tbd); cont.appendChild(tbl);
             });
-            table.appendChild(tbody);
-            container.appendChild(table);
-          });
-
-          document.getElementById('loading-ercot').style.display = 'none';
-          document.getElementById('output-ercot').style.display = 'block';
-        })
-        .catch(err => {
-          document.getElementById('loading-ercot').style.display = 'none';
-          const e = document.getElementById('error-ercot');
-          e.innerText = 'Error: ' + err.message;
-          e.style.display = 'block';
-        });
+            document.getElementById('loading-ercot').style.display='none';
+            document.getElementById('output-ercot').style.display='block';
+          })
+          .catch(e=>{ document.getElementById('loading-ercot').style.display='none'; const err=document.getElementById('error-ercot'); err.innerText='Error: '+e.message; err.style.display='block'; });
       })();
     });
   </script>
