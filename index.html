@@ -54,9 +54,7 @@
   </style>
 </head>
 <body>
-  <button
-    id="alerts-button"
-    onclick="window.location.href='https://ndustrialinternal.github.io/amp-cp-alerts/';">
+  <button id="alerts-button" onclick="window.location.href='https://ndustrialinternal.github.io/amp-cp-alerts/';">
     Open Amp CP Alerts
   </button>
 
@@ -82,7 +80,7 @@
   <!-- ERCOT Section -->
   <section>
     <h1>ERCOT Demand Top 5 Intervals per Month (ET)</h1>
-    <h2>Top 5 15-minute intervals each month</h2>
+    <h2>Top 5 15-minute intervals each month; first one bolded</h2>
     <div id="loading-ercot">Loading ERCOT data…</div>
     <div id="error-ercot" class="error" style="display: none;"></div>
     <div id="output-ercot" style="display: none;">
@@ -169,48 +167,41 @@
         })
         .then(resp => {
           const raw = resp.data;
-          raw.sort((a, b) => b.estimated_cp_load - a.estimated_cp_load);
+          // compute ERCOT CP manually
+          raw.forEach(d => {
+            d.cp = Number(d.internal_generation)
+                 + Number(d.dc_tie_imports)
+                 - Number(d.dc_tie_exports)
+                 - Number(d.wholesale_storage_load);
+          });
+          raw.sort((a, b) => b.cp - a.cp);
 
           const months = ['June 2025', 'July 2025', 'August 2025', 'September 2025'];
           const container = document.getElementById('tables-ercot');
           container.innerHTML = '';
 
           months.forEach(monthKey => {
-            // top 5 for this month
             const monthSlice = raw
               .filter(d => {
                 const dt = new Date(d.interval_start_local);
                 return dt.toLocaleString('en-US', {
-                  timeZone: 'America/New_York',
-                  year: 'numeric',
-                  month: 'long'
+                  timeZone: 'America/New_York', year: 'numeric', month: 'long'
                 }) === monthKey;
               })
               .slice(0, 5);
-
             if (!monthSlice.length) return;
 
-            // Month title
             const title = document.createElement('h3');
             title.innerText = monthKey;
             container.appendChild(title);
 
-            // Table
             const table = document.createElement('table');
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
-            [ 'Start (ET)',
-              'CP Load',
-              'Gross MW',
-              'Gen MW',
-              'DC In',
-              'DC Out',
-              'WSL'
-            ].forEach(text => {
-              const th = document.createElement('th');
-              th.innerText = text;
-              headerRow.appendChild(th);
-            });
+            ['Start (ET)', 'CP Load', 'Gross MW', 'Gen MW', 'DC In', 'DC Out', 'WSL']
+              .forEach(text => {
+                const th = document.createElement('th'); th.innerText = text; headerRow.appendChild(th);
+              });
             thead.appendChild(headerRow);
             table.appendChild(thead);
 
@@ -218,10 +209,9 @@
             monthSlice.forEach((d, idx) => {
               const tr = document.createElement('tr');
               const bold = idx === 0;
-              // values in desired order
               [
                 d.interval_start_local.replace('T',' ').slice(0,19),
-                d.estimated_cp_load,
+                d.cp,
                 d.operational_load,
                 d.internal_generation,
                 d.dc_tie_imports,
@@ -230,10 +220,7 @@
               ].forEach(val => {
                 const td = document.createElement('td');
                 if (typeof val === 'number') {
-                  td.innerText = val.toLocaleString(undefined, {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                  });
+                  td.innerText = val.toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 });
                 } else {
                   td.innerText = val;
                 }
