@@ -14,8 +14,13 @@
       margin-bottom: 0.5rem;
     }
     h2 {
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    h3 {
+      margin-top: 2rem;
       margin-bottom: 0.5rem;
-      font-size: 10px;
     }
     section {
       margin-top: 2rem;
@@ -35,7 +40,8 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 1rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1.5rem;
     }
     th, td {
       padding: 0.5rem;
@@ -76,31 +82,17 @@
   <!-- ERCOT Section -->
   <section>
     <h1>ERCOT Demand Top 5 Intervals per Month (ET)</h1>
-    <h2>Top 5 intervals each month; first one bolded</h2>
+    <h2>Top 5 15-minute intervals each month; first one bolded</h2>
     <div id="loading-ercot">Loading ERCOT data…</div>
     <div id="error-ercot" class="error" style="display: none;"></div>
     <div id="output-ercot" style="display: none;">
-      <table>
-        <thead>
-          <tr>
-            <th>Month</th>
-            <th>Start (ET)</th>
-            <th>Gross MW</th>
-            <th>Gen MW</th>
-            <th>DC In</th>
-            <th>DC Out</th>
-            <th>WSL</th>
-            <th>CP Load</th>
-          </tr>
-        </thead>
-        <tbody id="rows-ercot"></tbody>
-      </table>
+      <div id="tables-ercot"></div>
     </div>
   </section>
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const BEARER_TOKEN = 'eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjhmRFVxTW1Xb01HelFwOFgifQ.eyJhdWQiOlsiOHFZMnhKb2IxSkF4aG1WaElETENObkdyaVRNOWJjdDgiLCJpem5UYjMwU2ZwMkpwYWYzOThJNURONk15UHVEQ2Z0QSIsIjdqendmRTIwTzJYWjRhcTNjTzF3bWs2M0c5R3pOYzhqIiwiNzV3VDA0OFFjcEU3dWp3QkpQUGpyMjYzZVRIbDRnRVgiLCJlMklUMFptOVJnR2xEQmtMYTJydUVjTjlJb3A2ZEpBUyIsIlZaSjJNUmQ3MWRNOW9YMmhCMUVWQUVqVWU2bG9MN3BsIiwiWlByWU1XVkNjc3lZYUtLSzJ1aUZMUzcxWDFNQjd6SlAiLCJjdE8yZHlRbUJLeDE4MXhHUTN6R2M3dTRPeDA3UGFSMyIsIlo3NHM2WXd4alZQR2tNQ1ptUkJoZWRJZ01yY2tNMFNkIiwidnRpWmxNUm80YXBEdlRoVFJpSDdrTGlmUVhXVWRpOWoiXSwiaXNzIjoiaHR0cHM6Ly9jb250eHRhdXRoLmNvbS92MS8iLCJzdWIiOiJhdXRoMHw2Njk4MWE2MGYzNTliOTY4NTdmOGEyMzkiLCJhenAiOiJHclZmNVFUb2NrU3diR3pXdllreUpyQURySGxwcHVnTCIsImV4cCI6MTc1MDk1MzY0OSwiaWF0IjoxNzUwNjk0NDQ5LCJlbWFpbCI6ImpvcmRhbkBuZHVzdHJpYWwuaW8iLCJuYW1lIjoiSm9yZGFuIFBlbmRsZXRvbiIsImZpcnN0X25hbWUiOiJKb3JkYW4iLCJsYXN0X25hbWUiOiJQZW5kbGV0b24iLCJwZXJtaXNzaW9ucyI6eyI4cVkyeEpvYjFKQXhobVZoSURMQ05uR3JpVE05YmN0OCI6WyJyZWFkOnNlcnZpY2VzIiwicmVhZDpvcmdhbml6YXRpb25zIiwicmVhZDphcHBsaWNhdGlvbnMiLCJyZWFkOmltYWdlX3NlY3JldHMiLCJyZWFkOmltYWdlcyIsInJlYWQ6aW1hZ2VfdGFncyIsInJlYWQ6b3JnYW5pemF0aW9uX3VzZXJzIiwicmVhZDpyb2xlcyIsInJlYWQ6c2VydmljZV9kZXBsb3ltZW50cyIsInJlYWQ6dXNlcnMiLCJyZWFkOnVzZXJfcm9sZXMiLCJyZWFkOmF1dGhfY29ubmVjdGlvbnMiLCJyZWFkOnNvbWVfa3BpIiwicmVhZDplZGdlX25vZGVzIiwicmVhZDplZGdlX25vZGVfZ3JhbnRzIiwicmVhZDplbnZpcm9ubWVudHMiLCJyZWFkOmNvbmZpZ3VyYXRpb25zIiwicmVhZDp3b3JrZXJfcnVucyIsInJlYWQ6YXV0aF9jb25uZWN0aW9ucyIsInJlYWQ6YXBwbGljYXRpb25fcHJvamVjdHMiLCJyZWFkOmFwcGxpY2F0aW9ucyIsIndyaXRlOmFwcGxpY2F0aW9uX3VzZXJzIiwid3JpdGU6aW1hZ2Vfc2VjcmV0cyIsIndyaXRlOmltYWdlcyIsIndyaXRlOnVzZXJzIiwid3JpdGU6cm9sZXMiLCJ3cml0ZTppbWFnZV90YWdzIiwid3JpdGU6dXNlcl9yb2xlcyJdfX0.Fe00wLuk0mYtjRLB2BAwUwuC441a1BR033Uf0Be1ow8IUN00uuwgmvmmNqYKd30PqsBavYpL8fiP33ngqU3HtjATAFnxMZaBOOrn4e_v4VBByPDy8W23i0aeCogRZqjmgMS9HasTdEQB7sCn1tSirzz4C4EWDNjXjzETuKIoe7SyGvk_qLlXlCiPmUSpWi_IAkZrezGDA_X4G0DFvhfnTqCcIXmrunHg_sgna8ztI4-Q_5bQvn27AITGViV569eMJVNKub-Bs5jRig5_p-IO0T7hTNVuL-IdywgaxJ0IbOJ3uiJdP4Auwyr9bgrdUIADc9odAef5nqZNyRX3XwYB3w';
+      const BEARER_TOKEN = 'bda3a30f30804e22a62e4637700bab54';
 
       // ─── 1) PJM FETCH / PROCESS ─────────────────────────────────────────────
       (function fetchPJM() {
@@ -120,56 +112,37 @@
         })
         .then(rawArray => {
           rawArray.sort((a, b) => Number(b.value) - Number(a.value));
-
           const seenDatesET = new Set();
           const topFive = [];
-          const maxPeaks = 5;
-
           for (const entry of rawArray) {
-            if (topFive.length >= maxPeaks) break;
-
+            if (topFive.length >= 5) break;
             const dtUTC = new Date(entry.time);
             const dateET = dtUTC.toLocaleDateString('en-US', {
-              timeZone: 'America/New_York',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit'
+              timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit'
             });
-
             if (!seenDatesET.has(dateET)) {
               seenDatesET.add(dateET);
-
               const timeET = dtUTC.toLocaleString('en-US', {
                 timeZone: 'America/New_York',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
               });
-
-              topFive.push({
-                dateET,
-                timeET,
-                valueMW: Number(entry.value)
-              });
+              topFive.push({ dateET, timeET, valueMW: Number(entry.value) });
             }
           }
-
           const tbodyPJM = document.getElementById('rows-pjm');
           tbodyPJM.innerHTML = '';
           topFive.forEach(item => {
             const tr = document.createElement('tr');
-            [item.dateET, item.timeET, item.valueMW.toLocaleString(undefined, {
-              minimumFractionDigits: 3,
-              maximumFractionDigits: 3
-            })].forEach(text => {
+            [ item.dateET,
+              item.timeET,
+              item.valueMW.toLocaleString(undefined, { minimumFractionDigits:3, maximumFractionDigits:3 })
+            ].forEach(text => {
               const td = document.createElement('td');
               td.innerText = text;
               tr.appendChild(td);
             });
             tbodyPJM.appendChild(tr);
           });
-
           document.getElementById('loading').style.display = 'none';
           document.getElementById('output').style.display = 'block';
         })
@@ -183,85 +156,105 @@
 
       // ─── 2) ERCOT FETCH / PROCESS ────────────────────────────────────────────
       (function fetchERCOT() {
-        const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
         const urlERCOT =
           'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
           + '?start_time=2025-06-01T01%3A00%3A00'
           + '&end_time=2025-10-01'
           + '&timezone=market';
 
-        fetch(urlERCOT, { headers: { 'x-api-key': API_KEY } })
-          .then(r => {
-            if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-            return r.json();
-          })
-          .then(resp => {
-            const raw = resp.data;
-            raw.sort((a, b) => b.estimated_cp_load - a.estimated_cp_load);
+        fetch(urlERCOT, { headers: { 'x-api-key': BEARER_TOKEN } })
+        .then(r => {
+          if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+          return r.json();
+        })
+        .then(resp => {
+          const raw = resp.data;
+          raw.sort((a, b) => b.estimated_cp_load - a.estimated_cp_load);
 
-            const months = ['June 2025','July 2025','August 2025','September 2025'];
-            const rows = [];
+          const months = ['June 2025', 'July 2025', 'August 2025', 'September 2025'];
+          const container = document.getElementById('tables-ercot');
+          container.innerHTML = '';
 
-            months.forEach(monthKey => {
-              const monthSlice = raw
-                .filter(d => {
-                  const dt = new Date(d.interval_start_local);
-                  return dt.toLocaleString('en-US', {
-                    timeZone: 'America/New_York',
-                    year: 'numeric', month: 'long'
-                  }) === monthKey;
-                })
-                .slice(0, 5);
+          months.forEach(monthKey => {
+            // top 5 for this month
+            const monthSlice = raw
+              .filter(d => {
+                const dt = new Date(d.interval_start_local);
+                return dt.toLocaleString('en-US', {
+                  timeZone: 'America/New_York',
+                  year: 'numeric',
+                  month: 'long'
+                }) === monthKey;
+              })
+              .slice(0, 5);
 
-              monthSlice.forEach((d, idx) => {
-                rows.push({
-                  month: monthKey,
-                  start: d.interval_start_local.replace('T',' ').slice(0,19),
-                  gross: d.operational_load,
-                  gen:   d.internal_generation,
-                  dcIn:  d.dc_tie_imports,
-                  dcOut: d.dc_tie_exports,
-                  wsl:   d.wholesale_storage_load,
-                  cp:    d.estimated_cp_load,
-                  isTop: idx === 0
-                });
-              });
+            if (!monthSlice.length) return;
+
+            // Month title
+            const title = document.createElement('h3');
+            title.innerText = monthKey;
+            container.appendChild(title);
+
+            // Table
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            [ 'Start (ET)',
+              'CP Load',
+              'Gross MW',
+              'Gen MW',
+              'DC In',
+              'DC Out',
+              'WSL'
+            ].forEach(text => {
+              const th = document.createElement('th');
+              th.innerText = text;
+              headerRow.appendChild(th);
             });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
 
-            const tb = document.getElementById('rows-ercot');
-            tb.innerHTML = '';
-            rows.forEach(r => {
+            const tbody = document.createElement('tbody');
+            monthSlice.forEach((d, idx) => {
               const tr = document.createElement('tr');
-              const append = (text, bold) => {
+              const bold = idx === 0;
+              // values in desired order
+              [
+                d.interval_start_local.replace('T',' ').slice(0,19),
+                d.estimated_cp_load,
+                d.operational_load,
+                d.internal_generation,
+                d.dc_tie_imports,
+                d.dc_tie_exports,
+                d.wholesale_storage_load
+              ].forEach(val => {
                 const td = document.createElement('td');
-                td.innerText = typeof text === 'number'
-                  ? text.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})
-                  : text;
+                if (typeof val === 'number') {
+                  td.innerText = val.toLocaleString(undefined, {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                  });
+                } else {
+                  td.innerText = val;
+                }
                 if (bold) td.style.fontWeight = 'bold';
                 tr.appendChild(td);
-              };
-
-              append(r.month, r.isTop);
-              append(r.start, r.isTop);
-              append(r.gross, r.isTop);
-              append(r.gen,   r.isTop);
-              append(r.dcIn,  r.isTop);
-              append(r.dcOut, r.isTop);
-              append(r.wsl,   r.isTop);
-              append(r.cp,    r.isTop);
-
-              tb.appendChild(tr);
+              });
+              tbody.appendChild(tr);
             });
-
-            document.getElementById('loading-ercot').style.display = 'none';
-            document.getElementById('output-ercot').style.display = 'block';
-          })
-          .catch(err => {
-            document.getElementById('loading-ercot').style.display = 'none';
-            const e = document.getElementById('error-ercot');
-            e.innerText = 'Error: ' + err.message;
-            e.style.display = 'block';
+            table.appendChild(tbody);
+            container.appendChild(table);
           });
+
+          document.getElementById('loading-ercot').style.display = 'none';
+          document.getElementById('output-ercot').style.display = 'block';
+        })
+        .catch(err => {
+          document.getElementById('loading-ercot').style.display = 'none';
+          const e = document.getElementById('error-ercot');
+          e.innerText = 'Error: ' + err.message;
+          e.style.display = 'block';
+        });
       })();
     });
   </script>
