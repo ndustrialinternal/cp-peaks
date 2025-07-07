@@ -99,7 +99,7 @@
               if(!slice.length) return;
               const h3=document.createElement('h3'); h3.innerText=m; cont.appendChild(h3);
               const tbl=document.createElement('table'), thd=document.createElement('thead'), hdr=document.createElement('tr');
-              ['Start (ET)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)'].forEach(t=>{const th=document.createElement('th'); th.innerText=t; hdr.appendChild(th);});
+              ['Start (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)'].forEach(t=>{const th=document.createElement('th'); th.innerText=t; hdr.appendChild(th);});
               thd.appendChild(hdr); tbl.appendChild(thd);
               const tbd=document.createElement('tbody');
               slice.forEach((d,i)=>{
