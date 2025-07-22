@@ -14,6 +14,8 @@
     table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; }
     th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
     th { background-color: #f0f0f0; }
+    #pjm-controls { margin-top: 1rem; }
+    #zone-filter { width: 100%; max-width: 300px; height: auto; }
   </style>
 </head>
 <body>
@@ -27,6 +29,12 @@
     <h1>PJM Demand Top 5 Daily Peaks by Zone (ET)</h1>
     <div id="loading-pjm">Loading PJM data…</div>
     <div id="error-pjm" class="error" style="display:none;"></div>
+
+    <div id="pjm-controls" style="display:none;">
+      <label for="zone-filter">Select Zones:</label><br/>
+      <select id="zone-filter" multiple size="9"></select>
+    </div>
+
     <div id="output-pjm" style="display:none;">
       <div id="tables-pjm"></div>
     </div>
@@ -47,7 +55,62 @@
     document.addEventListener('DOMContentLoaded', () => {
       const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-      // PJM via GridStatus: generate top‑5 daily peaks for each zone, using interval_end_local
+      const zones = [
+        { key: 'load.pjm_rto', label: 'PJM RTO' },
+        { key: 'load.comed',   label: 'COMED'   },
+        { key: 'load.ae',      label: 'AECO'    },
+        { key: 'load.aep',     label: 'AEP'     },
+        { key: 'load.dpl',     label: 'DPL'     },
+        { key: 'load.ps',      label: 'PSEG'    },
+        { key: 'load.pe',      label: 'PECO'    },
+        { key: 'load.bc',      label: 'BGE'     },
+        { key: 'load.pl',      label: 'PPL'     },
+      ];
+      const zoneTopData = {};
+
+      function renderTables(selectedKeys) {
+        const container = document.getElementById('tables-pjm');
+        container.innerHTML = '';
+        selectedKeys.forEach(key => {
+          const zone = zones.find(z => z.key === key);
+          const top = zoneTopData[key] || [];
+          if (!zone || !top.length) return;
+
+          const h3 = document.createElement('h3');
+          h3.innerText = zone.label;
+          container.appendChild(h3);
+
+          const tbl = document.createElement('table');
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+          ['Date (ET)', 'Day', 'End Time (ET)', 'Load (MW)']
+            .forEach(txt => {
+              const th = document.createElement('th');
+              th.innerText = txt;
+              headerRow.appendChild(th);
+            });
+          thead.appendChild(headerRow);
+          tbl.appendChild(thead);
+
+          const tbody = document.createElement('tbody');
+          top.forEach(r => {
+            const tr = document.createElement('tr');
+            [r.date, r.day, r.endTime, r.value.toLocaleString(undefined, {
+              minimumFractionDigits: 3,
+              maximumFractionDigits: 3
+            })].forEach(txt => {
+              const td = document.createElement('td');
+              td.innerText = txt;
+              tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+          });
+          tbl.appendChild(tbody);
+          container.appendChild(tbl);
+        });
+      }
+
+      // PJM fetch + prepare data
       (function fetchPJM() {
         const url =
           'https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query'
@@ -60,33 +123,13 @@
           .then(resp => {
             const arr = resp.data || [];
 
-            // define the zones and their field keys
-            const zones = [
-              { key: 'load.pjm_rto', label: 'PJM RTO'      },
-              { key: 'load.comed',   label: 'COMED'        },
-              { key: 'load.ae',      label: 'AECO'         },
-              { key: 'load.aep',     label: 'AEP'          },
-              { key: 'load.dpl',     label: 'DPL'          },
-              { key: 'load.ps',      label: 'PSEG'         },
-              { key: 'load.pe',      label: 'PECO'         },
-              { key: 'load.bc',      label: 'BGE'          },
-              { key: 'load.pl',      label: 'PPL'          },
-            ];
-
-            const container = document.getElementById('tables-pjm');
-            container.innerHTML = '';
-
             zones.forEach(zone => {
-              // map each record to { interval_end_local, value }
               const copy = arr.map(e => ({
                 interval_end_local: e.interval_end_local,
                 value: e[zone.key]
               }));
-
-              // sort descending by value
               copy.sort((a,b) => (b.value||0) - (a.value||0));
 
-              // pick top 5 unique dates, capturing date, day, endTime, value
               const seen = new Set(), top = [];
               for (const e of copy) {
                 if (top.length >= 5) break;
@@ -99,58 +142,38 @@
                   seen.add(date);
                   top.push({
                     date,
-                    day: dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
+                    day: dt.toLocaleDateString('en-US', { weekday:'short', timeZone:'America/New_York' }),
                     endTime: dt.toLocaleTimeString('en-US', {
                       timeZone: 'America/New_York',
-                      hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                      hour12: true, hour:'2-digit', minute:'2-digit', second:'2-digit'
                     }),
                     value: e.value
                   });
                 }
               }
-
-              if (!top.length) return;
-
-              // render header + table
-              const h3 = document.createElement('h3');
-              h3.innerText = zone.label;
-              container.appendChild(h3);
-
-              const tbl = document.createElement('table');
-              const thead = document.createElement('thead');
-              const headerRow = document.createElement('tr');
-              ['Date (ET)','Day','End Time (ET)','Load (MW)']
-                .forEach(txt => {
-                  const th = document.createElement('th');
-                  th.innerText = txt;
-                  headerRow.appendChild(th);
-                });
-              thead.appendChild(headerRow);
-              tbl.appendChild(thead);
-
-              const tbody = document.createElement('tbody');
-              top.forEach(r => {
-                const tr = document.createElement('tr');
-                [ r.date,
-                  r.day,
-                  r.endTime,
-                  r.value.toLocaleString(undefined, {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                  })
-                ].forEach(txt => {
-                  const td = document.createElement('td');
-                  td.innerText = txt;
-                  tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-              });
-              tbl.appendChild(tbody);
-              container.appendChild(tbl);
+              zoneTopData[zone.key] = top;
             });
 
             document.getElementById('loading-pjm').style.display = 'none';
+            document.getElementById('pjm-controls').style.display = 'block';
             document.getElementById('output-pjm').style.display = 'block';
+
+            // populate multiselect
+            const select = document.getElementById('zone-filter');
+            zones.forEach(z => {
+              const opt = document.createElement('option');
+              opt.value = z.key;
+              opt.text = z.label;
+              opt.selected = true;
+              select.appendChild(opt);
+            });
+            select.addEventListener('change', () => {
+              const selected = Array.from(select.selectedOptions).map(o => o.value);
+              renderTables(selected);
+            });
+
+            // initial render with all zones
+            renderTables(zones.map(z => z.key));
           })
           .catch(e => {
             document.getElementById('loading-pjm').style.display = 'none';
@@ -160,7 +183,7 @@
           });
       })();
 
-      // ERCOT Fetch (unchanged, delayed for rate limit), using interval_end_local and updating header
+      // ERCOT Fetch (unchanged, delayed for rate limit)
       setTimeout(() => {
         (function fetchERCOT() {
           const url =
