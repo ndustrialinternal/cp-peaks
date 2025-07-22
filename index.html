@@ -24,20 +24,15 @@
 
   <!-- PJM Section -->
   <section>
-    <h1>PJM Demand Top 5 Daily Peaks (ET)</h1>
+    <h1>PJM Demand Top 5 Daily Peaks by Zone (ET)</h1>
     <div id="loading-pjm">Loading PJM data…</div>
     <div id="error-pjm" class="error" style="display:none;"></div>
     <div id="output-pjm" style="display:none;">
-      <table>
-        <thead>
-          <tr><th>Date (ET)</th><th>Time (ET)</th><th>Load (MW)</th></tr>
-        </thead>
-        <tbody id="rows-pjm"></tbody>
-      </table>
+      <div id="tables-pjm"></div>
     </div>
   </section>
 
-  <!-- ERCOT Section -->
+  <!-- ERCOT Section (unchanged) -->
   <section>
     <h1>ERCOT Demand Top 5 Intervals per Month (CT)</h1>
     <h2>Top 5 15‑minute intervals each month</h2>
@@ -52,7 +47,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-      // PJM via GridStatus: use load.pjm_rto
+      // PJM via GridStatus: generate top‑5 daily peaks for each zone, including Day of Week
       (function fetchPJM() {
         const url =
           'https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query'
@@ -65,52 +60,93 @@
           .then(resp => {
             const arr = resp.data || [];
 
-            // assign the PJM RTO load to .value
-            arr.forEach(e => {
-              e.value = e['load.pjm_rto'];
-            });
+            // define the zones and their field keys
+            const zones = [
+              { key: 'load.pjm_rto', label: 'PJM RTO'      },
+              { key: 'load.comed',   label: 'COMED'        },
+              { key: 'load.ae',      label: 'AECO'         },
+              { key: 'load.aep',     label: 'AEP'          },
+              { key: 'load.dpl',     label: 'DPL'          },
+              { key: 'load.ps',      label: 'PSEG'         },
+              { key: 'load.pe',      label: 'PECO'         },
+              { key: 'load.bc',      label: 'BGE'          },
+              { key: 'load.pl',      label: 'PPL'          },
+            ];
 
-            // sort descending on .value
-            arr.sort((a, b) => (b.value || 0) - (a.value || 0));
+            const container = document.getElementById('tables-pjm');
+            container.innerHTML = '';
 
-            // pick top 5 unique dates
-            const seen = new Set(), top = [];
-            for (const e of arr) {
-              if (top.length >= 5) break;
-              const dt = new Date(e.interval_start_local);
-              const date = dt.toLocaleDateString('en-US', {
-                timeZone: 'America/New_York',
-                year: 'numeric', month: '2-digit', day: '2-digit'
-              });
-              if (!seen.has(date)) {
-                seen.add(date);
-                top.push({
-                  date,
-                  time: dt.toLocaleTimeString('en-US', {
-                    timeZone: 'America/New_York',
-                    hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
-                  }),
-                  value: e.value
+            zones.forEach(zone => {
+              // map each record to { interval_start_local, value }
+              const copy = arr.map(e => ({
+                interval_start_local: e.interval_start_local,
+                value: e[zone.key]
+              }));
+
+              // sort descending by value
+              copy.sort((a,b) => (b.value||0) - (a.value||0));
+
+              // pick top 5 unique dates, capturing date, day, time, value
+              const seen = new Set(), top = [];
+              for (const e of copy) {
+                if (top.length >= 5) break;
+                const dt = new Date(e.interval_start_local);
+                const date = dt.toLocaleDateString('en-US', {
+                  timeZone: 'America/New_York',
+                  year: 'numeric', month: '2-digit', day: '2-digit'
                 });
+                if (!seen.has(date)) {
+                  seen.add(date);
+                  top.push({
+                    date,
+                    day: dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
+                    time: dt.toLocaleTimeString('en-US', {
+                      timeZone: 'America/New_York',
+                      hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    }),
+                    value: e.value
+                  });
+                }
               }
-            }
 
-            // render into table
-            const tb = document.getElementById('rows-pjm');
-            tb.innerHTML = '';
-            top.forEach(r => {
-              const tr = document.createElement('tr');
-              [ r.date,
-                r.time,
-                r.value.toLocaleString(undefined, {
-                  minimumFractionDigits: 3, maximumFractionDigits: 3
-                })
-              ].forEach(txt => {
-                const td = document.createElement('td');
-                td.innerText = txt;
-                tr.appendChild(td);
+              if (!top.length) return;
+
+              // render header + table
+              const h3 = document.createElement('h3');
+              h3.innerText = zone.label;
+              container.appendChild(h3);
+
+              const tbl = document.createElement('table');
+              const thead = document.createElement('thead');
+              const headerRow = document.createElement('tr');
+              ['Date (ET)','Day','Time (ET)','Load (MW)']
+                .forEach(txt => {
+                  const th = document.createElement('th');
+                  th.innerText = txt;
+                  headerRow.appendChild(th);
+                });
+              thead.appendChild(headerRow);
+              tbl.appendChild(thead);
+
+              const tbody = document.createElement('tbody');
+              top.forEach(r => {
+                const tr = document.createElement('tr');
+                [ r.date,
+                  r.day,
+                  r.time,
+                  r.value.toLocaleString(undefined, {
+                    minimumFractionDigits: 3,
+                    maximumFractionDigits: 3
+                  })
+                ].forEach(txt => {
+                  const td = document.createElement('td');
+                  td.innerText = txt;
+                  tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
               });
-              tb.appendChild(tr);
+              tbl.appendChild(tbody);
+              container.appendChild(tbl);
             });
 
             document.getElementById('loading-pjm').style.display = 'none';
@@ -124,7 +160,7 @@
           });
       })();
 
-      // ERCOT Fetch (unchanged)
+      // ERCOT Fetch (unchanged, delayed for rate limit)
       setTimeout(() => {
         (function fetchERCOT() {
           const url =
