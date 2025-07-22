@@ -54,10 +54,10 @@
 
       // PJM via GridStatus
       (function fetchPJM() {
-        const url = 
+        const url =
           'https://api.gridstatus.io/v1/datasets/pjm_standardized_5_min/query'
           + '?start_time=2025-06-01T01%3A00%3A00'
-          + '&end_time=2025-10-01'
+          + '&end_time=2025-06-03'
           + '&timezone=market';
 
         fetch(url, { headers: { 'x-api-key': API_KEY } })
@@ -94,7 +94,8 @@
               [ r.date,
                 r.time,
                 r.value.toLocaleString(undefined, {
-                  minimumFractionDigits: 3, maximumFractionDigits: 3
+                  minimumFractionDigits: 3,
+                  maximumFractionDigits: 3
                 })
               ].forEach(txt => {
                 const td = document.createElement('td');
@@ -115,96 +116,99 @@
           });
       })();
 
-      // ERCOT Fetch
-      (function fetchERCOT() {
-        const url =
-          'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
-          + '?start_time=2025-06-01T01%3A00%3A00'
-          + '&end_time=2025-10-01'
-          + '&timezone=market';
+      // Delay the ERCOT fetch by 1.1 seconds to respect the 1req/sec rate limit
+      setTimeout(() => {
+        (function fetchERCOT() {
+          const url =
+            'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
+            + '?start_time=2025-06-01T01%3A00%3A00'
+            + '&end_time=2025-10-01'
+            + '&timezone=market';
 
-        fetch(url, { headers: { 'x-api-key': API_KEY } })
-          .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-          .then(resp => {
-            const arr = resp.data;
-            arr.forEach(d => {
-              d.cp = d.internal_generation
-                   + d.dc_tie_imports
-                   - d.dc_tie_exports
-                   - d.wholesale_storage_load;
-            });
-            arr.sort((a,b) => b.cp - a.cp);
-
-            const months = ['June 2025','July 2025','August 2025','September 2025'];
-            const cont = document.getElementById('tables-ercot');
-            cont.innerHTML = '';
-
-            months.forEach(m => {
-              const slice = arr.filter(d => {
-                const dt = new Date(d.interval_start_local);
-                return dt.toLocaleString('en-US', {
-                  timeZone: 'America/New_York',
-                  year: 'numeric', month: 'long'
-                }) === m;
-              }).slice(0,5);
-
-              if (!slice.length) return;
-
-              const h3 = document.createElement('h3');
-              h3.innerText = m;
-              cont.appendChild(h3);
-
-              const tbl = document.createElement('table'),
-                    thd = document.createElement('thead'),
-                    hdr = document.createElement('tr');
-
-              ['Start (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)']
-                .forEach(t => {
-                  const th = document.createElement('th');
-                  th.innerText = t;
-                  hdr.appendChild(th);
-                });
-
-              thd.appendChild(hdr);
-              tbl.appendChild(thd);
-
-              const tbd = document.createElement('tbody');
-              slice.forEach((d,i) => {
-                const tr = document.createElement('tr'),
-                      bold = i === 0;
-                [
-                  d.interval_start_local.replace('T',' ').slice(0,19),
-                  d.cp, d.internal_generation,
-                  d.dc_tie_imports, d.dc_tie_exports,
-                  d.wholesale_storage_load
-                ].forEach(val => {
-                  const td = document.createElement('td');
-                  td.innerText = (typeof val === 'number')
-                    ? val.toLocaleString(undefined, {
-                        minimumFractionDigits: 3,
-                        maximumFractionDigits: 3
-                      })
-                    : val;
-                  if (bold) td.style.fontWeight = 'bold';
-                  tr.appendChild(td);
-                });
-                tbd.appendChild(tr);
+          fetch(url, { headers: { 'x-api-key': API_KEY } })
+            .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+            .then(resp => {
+              const arr = resp.data;
+              arr.forEach(d => {
+                d.cp = d.internal_generation
+                     + d.dc_tie_imports
+                     - d.dc_tie_exports
+                     - d.wholesale_storage_load;
               });
+              arr.sort((a,b) => b.cp - a.cp);
 
-              tbl.appendChild(tbd);
-              cont.appendChild(tbl);
+              const months = ['June 2025','July 2025','August 2025','September 2025'];
+              const cont = document.getElementById('tables-ercot');
+              cont.innerHTML = '';
+
+              months.forEach(m => {
+                const slice = arr.filter(d => {
+                  const dt = new Date(d.interval_start_local);
+                  return dt.toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
+                    year: 'numeric', month: 'long'
+                  }) === m;
+                }).slice(0,5);
+
+                if (!slice.length) return;
+
+                const h3 = document.createElement('h3');
+                h3.innerText = m;
+                cont.appendChild(h3);
+
+                const tbl = document.createElement('table'),
+                      thd = document.createElement('thead'),
+                      hdr = document.createElement('tr');
+
+                ['Start (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)']
+                  .forEach(t => {
+                    const th = document.createElement('th');
+                    th.innerText = t;
+                    hdr.appendChild(th);
+                  });
+
+                thd.appendChild(hdr);
+                tbl.appendChild(thd);
+
+                const tbd = document.createElement('tbody');
+                slice.forEach((d,i) => {
+                  const tr = document.createElement('tr'),
+                        bold = i === 0;
+                  [
+                    d.interval_start_local.replace('T',' ').slice(0,19),
+                    d.cp, d.internal_generation,
+                    d.dc_tie_imports, d.dc_tie_exports,
+                    d.wholesale_storage_load
+                  ].forEach(val => {
+                    const td = document.createElement('td');
+                    td.innerText = (typeof val === 'number')
+                      ? val.toLocaleString(undefined, {
+                          minimumFractionDigits: 3,
+                          maximumFractionDigits: 3
+                        })
+                      : val;
+                    if (bold) td.style.fontWeight = 'bold';
+                    tr.appendChild(td);
+                  });
+                  tbd.appendChild(tr);
+                });
+
+                tbl.appendChild(tbd);
+                cont.appendChild(tbl);
+              });
+              
+              document.getElementById('loading-ercot').style.display = 'none';
+              document.getElementById('output-ercot').style.display = 'block';
+            })
+            .catch(e => {
+              document.getElementById('loading-ercot').style.display = 'none';
+              const err = document.getElementById('error-ercot');
+              err.innerText = 'Error: ' + e.message;
+              err.style.display = 'block';
             });
+        })();
+      }, 1100);
 
-            document.getElementById('loading-ercot').style.display = 'none';
-            document.getElementById('output-ercot').style.display = 'block';
-          })
-          .catch(e => {
-            document.getElementById('loading-ercot').style.display = 'none';
-            const err = document.getElementById('error-ercot');
-            err.innerText = 'Error: ' + e.message;
-            err.style.display = 'block';
-          });
-      })();
     });
   </script>
 </body>
