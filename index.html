@@ -31,12 +31,18 @@
       margin: 0 0 0.5rem;
       font-size: 1rem;
     }
+    #control-buttons {
+      margin-bottom: 0.5rem;
+    }
+    #control-buttons button {
+      margin-right: 0.5rem;
+    }
     #data-controls label {
       display: block;
       margin-bottom: 0.25rem;
       cursor: pointer;
     }
-    #data-controls input {
+    #data-controls input[type="checkbox"] {
       margin-right: 0.5rem;
     }
   </style>
@@ -50,6 +56,10 @@
   <!-- controls -->
   <div id="data-controls" style="display:none;">
     <h4>Select Data</h4>
+    <div id="control-buttons">
+      <button id="select-all" type="button">Select All</button>
+      <button id="clear-all" type="button">Clear All</button>
+    </div>
     <!-- checkboxes will be inserted here -->
   </div>
 
@@ -78,78 +88,76 @@
   document.addEventListener('DOMContentLoaded', () => {
     const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-    // define your PJM zones and ERCOT as a filter option
+    // define your PJM zones and ERCOT as filter options
     const filters = [
-      { key: 'load.pjm_rto', label: 'PJM RTO',   type: 'pjm' },
-      { key: 'load.comed',   label: 'COMED',     type: 'pjm' },
-      { key: 'load.ae',      label: 'AECO',      type: 'pjm' },
-      { key: 'load.aep',     label: 'AEP',       type: 'pjm' },
-      { key: 'load.dpl',     label: 'DPL',       type: 'pjm' },
-      { key: 'load.ps',      label: 'PSEG',      type: 'pjm' },
-      { key: 'load.pe',      label: 'PECO',      type: 'pjm' },
-      { key: 'load.bc',      label: 'BGE',       type: 'pjm' },
-      { key: 'load.pl',      label: 'PPL',       type: 'pjm' },
-      { key: 'ercot',        label: 'ERCOT',     type: 'ercot' },
+      { key: 'load.pjm_rto', label: 'PJM RTO', type: 'pjm' },
+      { key: 'load.comed',   label: 'COMED',   type: 'pjm' },
+      { key: 'load.ae',      label: 'AECO',    type: 'pjm' },
+      { key: 'load.aep',     label: 'AEP',     type: 'pjm' },
+      { key: 'load.dpl',     label: 'DPL',     type: 'pjm' },
+      { key: 'load.ps',      label: 'PSEG',    type: 'pjm' },
+      { key: 'load.pe',      label: 'PECO',    type: 'pjm' },
+      { key: 'load.bc',      label: 'BGE',     type: 'pjm' },
+      { key: 'load.pl',      label: 'PPL',     type: 'pjm' },
+      { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
     ];
 
     // store precomputed top‐5 for PJM zones
     const zoneTopData = {};
 
+    function onFilterChange() {
+      const checked = Array.from(
+        document.querySelectorAll('#data-controls input[type=checkbox]:checked')
+      ).map(cb => cb.value);
+      renderPJM(checked.filter(k => k !== 'ercot'));
+      toggleERCOT(checked.includes('ercot'));
+    }
+
     function renderPJM(selectedZoneKeys) {
       const container = document.getElementById('tables-pjm');
       container.innerHTML = '';
-      selectedZoneKeys
-        .filter(k => k !== 'ercot')
-        .forEach(key => {
-          const zone = filters.find(f => f.key === key);
-          const top = zoneTopData[key] || [];
-          if (!zone || !top.length) return;
+      selectedZoneKeys.forEach(key => {
+        const zone = filters.find(f => f.key === key);
+        const top = zoneTopData[key] || [];
+        if (!zone || !top.length) return;
 
-          const h3 = document.createElement('h3');
-          h3.innerText = zone.label;
-          container.appendChild(h3);
+        const h3 = document.createElement('h3');
+        h3.innerText = zone.label;
+        container.appendChild(h3);
 
-          const table = document.createElement('table');
-          const thead = document.createElement('thead');
-          const headerRow = document.createElement('tr');
-          ['Date (ET)', 'Day', 'End Time (ET)', 'Load (MW)'].forEach(text => {
-            const th = document.createElement('th');
-            th.innerText = text;
-            headerRow.appendChild(th);
-          });
-          thead.appendChild(headerRow);
-          table.appendChild(thead);
-
-          const tbody = document.createElement('tbody');
-          top.forEach(r => {
-            const tr = document.createElement('tr');
-            [r.date, r.day, r.endTime, r.value.toLocaleString(undefined, {
-              minimumFractionDigits: 3,
-              maximumFractionDigits: 3
-            })].forEach(txt => {
-              const td = document.createElement('td');
-              td.innerText = txt;
-              tr.appendChild(td);
-            });
-            tbody.appendChild(tr);
-          });
-          table.appendChild(tbody);
-          container.appendChild(table);
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        ['Date (ET)', 'Day', 'End Time (ET)', 'Load (MW)'].forEach(text => {
+          const th = document.createElement('th');
+          th.innerText = text;
+          headerRow.appendChild(th);
         });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        top.forEach(r => {
+          const tr = document.createElement('tr');
+          [r.date, r.day, r.endTime, r.value.toLocaleString(undefined, {
+            minimumFractionDigits: 3,
+            maximumFractionDigits: 3
+          })].forEach(txt => {
+            const td = document.createElement('td');
+            td.innerText = txt;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+        container.appendChild(table);
+      });
     }
 
     function toggleERCOT(show) {
       document.getElementById('loading-ercot').style.display = show ? '' : 'none';
       document.getElementById('error-ercot').style.display = 'none';
       document.getElementById('output-ercot').style.display = show ? '' : 'none';
-    }
-
-    function onFilterChange() {
-      const checked = Array.from(
-        document.querySelectorAll('#data-controls input[type=checkbox]:checked')
-      ).map(cb => cb.value);
-      renderPJM(checked);
-      toggleERCOT(checked.includes('ercot'));
     }
 
     // build the checkbox panel
@@ -164,6 +172,20 @@
       lbl.appendChild(cb);
       lbl.appendChild(document.createTextNode(f.label));
       ctrl.appendChild(lbl);
+    });
+
+    // select all / clear all buttons
+    document.getElementById('select-all').addEventListener('click', () => {
+      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => {
+        cb.checked = true;
+      });
+      onFilterChange();
+    });
+    document.getElementById('clear-all').addEventListener('click', () => {
+      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => {
+        cb.checked = false;
+      });
+      onFilterChange();
     });
 
     // PJM fetch & precompute
