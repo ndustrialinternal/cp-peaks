@@ -64,7 +64,7 @@
   </div>
 
   <!-- PJM Section -->
-  <section>
+  <section id="pjm-section">
     <h1>PJM Demand Top 5 Daily Peaks by Zone (ET)</h1>
     <div id="loading-pjm">Loading PJM data…</div>
     <div id="error-pjm" class="error" style="display:none;"></div>
@@ -74,7 +74,7 @@
   </section>
 
   <!-- ERCOT Section -->
-  <section>
+  <section id="ercot-section">
     <h1>ERCOT Demand Top 5 Intervals per Month (CT)</h1>
     <h2>Top 5 15‑minute intervals each month</h2>
     <div id="loading-ercot">Loading ERCOT data…</div>
@@ -88,7 +88,6 @@
   document.addEventListener('DOMContentLoaded', () => {
     const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-    // define your PJM zones and ERCOT as filter options
     const filters = [
       { key: 'load.pjm_rto', label: 'PJM RTO', type: 'pjm' },
       { key: 'load.comed',   label: 'COMED',   type: 'pjm' },
@@ -102,15 +101,26 @@
       { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
     ];
 
-    // store precomputed top‐5 for PJM zones
     const zoneTopData = {};
 
     function onFilterChange() {
       const checked = Array.from(
         document.querySelectorAll('#data-controls input[type=checkbox]:checked')
       ).map(cb => cb.value);
+
+      // Hide/show PJM section
+      const pjmsSelected = checked.some(k =>
+        filters.find(f => f.key === k)?.type === 'pjm'
+      );
+      document.getElementById('pjm-section').style.display = pjmsSelected ? '' : 'none';
+
+      // Hide/show ERCOT section
+      const ercotSelected = checked.includes('ercot');
+      document.getElementById('ercot-section').style.display = ercotSelected ? '' : 'none';
+
+      // Render contents
       renderPJM(checked.filter(k => k !== 'ercot'));
-      toggleERCOT(checked.includes('ercot'));
+      toggleERCOT(ercotSelected);
     }
 
     function renderPJM(selectedZoneKeys) {
@@ -176,15 +186,11 @@
 
     // select all / clear all buttons
     document.getElementById('select-all').addEventListener('click', () => {
-      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => {
-        cb.checked = true;
-      });
+      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => cb.checked = true);
       onFilterChange();
     });
     document.getElementById('clear-all').addEventListener('click', () => {
-      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => {
-        cb.checked = false;
-      });
+      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => cb.checked = false);
       onFilterChange();
     });
 
