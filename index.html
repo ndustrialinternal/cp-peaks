@@ -47,7 +47,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-      // PJM via GridStatus: generate top‑5 daily peaks for each zone, including Day of Week
+      // PJM via GridStatus: generate top‑5 daily peaks for each zone, using interval_end_local
       (function fetchPJM() {
         const url =
           'https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query'
@@ -77,20 +77,20 @@
             container.innerHTML = '';
 
             zones.forEach(zone => {
-              // map each record to { interval_start_local, value }
+              // map each record to { interval_end_local, value }
               const copy = arr.map(e => ({
-                interval_start_local: e.interval_start_local,
+                interval_end_local: e.interval_end_local,
                 value: e[zone.key]
               }));
 
               // sort descending by value
               copy.sort((a,b) => (b.value||0) - (a.value||0));
 
-              // pick top 5 unique dates, capturing date, day, time, value
+              // pick top 5 unique dates, capturing date, day, endTime, value
               const seen = new Set(), top = [];
               for (const e of copy) {
                 if (top.length >= 5) break;
-                const dt = new Date(e.interval_start_local);
+                const dt = new Date(e.interval_end_local);
                 const date = dt.toLocaleDateString('en-US', {
                   timeZone: 'America/New_York',
                   year: 'numeric', month: '2-digit', day: '2-digit'
@@ -100,7 +100,7 @@
                   top.push({
                     date,
                     day: dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
-                    time: dt.toLocaleTimeString('en-US', {
+                    endTime: dt.toLocaleTimeString('en-US', {
                       timeZone: 'America/New_York',
                       hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit'
                     }),
@@ -119,7 +119,7 @@
               const tbl = document.createElement('table');
               const thead = document.createElement('thead');
               const headerRow = document.createElement('tr');
-              ['Date (ET)','Day','Time (ET)','Load (MW)']
+              ['Date (ET)','Day','End Time (ET)','Load (MW)']
                 .forEach(txt => {
                   const th = document.createElement('th');
                   th.innerText = txt;
@@ -133,7 +133,7 @@
                 const tr = document.createElement('tr');
                 [ r.date,
                   r.day,
-                  r.time,
+                  r.endTime,
                   r.value.toLocaleString(undefined, {
                     minimumFractionDigits: 3,
                     maximumFractionDigits: 3
@@ -160,7 +160,7 @@
           });
       })();
 
-      // ERCOT Fetch (unchanged, delayed for rate limit)
+      // ERCOT Fetch (unchanged, delayed for rate limit), using interval_end_local and updating header
       setTimeout(() => {
         (function fetchERCOT() {
           const url =
@@ -187,7 +187,7 @@
 
               months.forEach(m => {
                 const slice = arr.filter(d => {
-                  const dt = new Date(d.interval_start_local);
+                  const dt = new Date(d.interval_end_local);
                   return dt.toLocaleString('en-US', {
                     timeZone: 'America/New_York',
                     year: 'numeric', month: 'long'
@@ -204,7 +204,7 @@
                       thd = document.createElement('thead'),
                       hdr = document.createElement('tr');
 
-                ['Start (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)']
+                ['End Time (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)']
                   .forEach(t => {
                     const th = document.createElement('th');
                     th.innerText = t;
@@ -219,7 +219,7 @@
                   const tr = document.createElement('tr'),
                         bold = i === 0;
                   [
-                    d.interval_start_local.replace('T',' ').slice(0,19),
+                    d.interval_end_local.replace('T',' ').slice(0,19),
                     d.cp, d.internal_generation,
                     d.dc_tie_imports, d.dc_tie_exports,
                     d.wholesale_storage_load
