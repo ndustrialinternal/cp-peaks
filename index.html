@@ -9,7 +9,7 @@
     h2 { margin-bottom: 1rem; font-size: 0.9rem; color: #555; }
     h3 { margin-top: 2rem; margin-bottom: 0.5rem; }
     section { margin-top: 2rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
-    #loading-pjm, #loading-ercot { font-style: italic; color: #666; }
+    #loading-pjm, #loading-ercot, #loading-ercot-estimated { font-style: italic; color: #666; }
     .error { color: #c00; margin-top: 0.5rem; }
     table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; }
     th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
@@ -17,34 +17,16 @@
 
     /* controls panel */
     #data-controls {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      padding: 1rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      position: fixed; top: 1rem; right: 1rem;
+      background: #fff; border: 1px solid #ddd; border-radius: 4px;
+      padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       z-index: 1000;
     }
-    #data-controls h4 {
-      margin: 0 0 0.5rem;
-      font-size: 1rem;
-    }
-    #control-buttons {
-      margin-bottom: 0.5rem;
-    }
-    #control-buttons button {
-      margin-right: 0.5rem;
-    }
-    #data-controls label {
-      display: block;
-      margin-bottom: 0.25rem;
-      cursor: pointer;
-    }
-    #data-controls input[type="checkbox"] {
-      margin-right: 0.5rem;
-    }
+    #data-controls h4 { margin: 0 0 0.5rem; font-size: 1rem; }
+    #control-buttons { margin-bottom: 0.5rem; }
+    #control-buttons button { margin-right: 0.5rem; }
+    #data-controls label { display: block; margin-bottom: 0.25rem; cursor: pointer; }
+    #data-controls input[type="checkbox"] { margin-right: 0.5rem; }
   </style>
 </head>
 <body>
@@ -60,7 +42,7 @@
       <button id="select-all" type="button">Select All</button>
       <button id="clear-all" type="button">Clear All</button>
     </div>
-    <!-- checkboxes will be inserted here -->
+    <!-- checkboxes will go here -->
   </div>
 
   <!-- PJM Section -->
@@ -84,258 +66,217 @@
     </div>
   </section>
 
+  <!-- New ERCOT Estimated Section -->
+  <section id="ercot-estimated-section" style="display:none;">
+    <h1>ERCOT Estimated CP Load Metrics (CT)</h1>
+    <div id="loading-ercot-estimated">Loading estimated CP data…</div>
+    <div id="error-ercot-estimated" class="error" style="display:none;"></div>
+    <div id="output-ercot-estimated" style="display:none;">
+      <h2>Top 5 Estimated CP Load</h2>
+      <table>
+        <thead>
+          <tr><th>Date (CT)</th><th>End Time (CT)</th><th>Estimated CP Load (MW)</th></tr>
+        </thead>
+        <tbody id="table-est-cp"></tbody>
+      </table>
+      <h2>Top 5 Estimated CP Load with Gen</h2>
+      <table>
+        <thead>
+          <tr><th>Date (CT)</th><th>End Time (CT)</th><th>Est. CP Load w/ Gen (MW)</th></tr>
+        </thead>
+        <tbody id="table-est-cp-gen"></tbody>
+      </table>
+    </div>
+  </section>
+
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
+    document.addEventListener('DOMContentLoaded', () => {
+      const API_KEY = 'bda3a30f30804e22a62e4637700bab54';
 
-    const filters = [
-      { key: 'load.pjm_rto', label: 'PJM RTO', type: 'pjm' },
-      { key: 'load.comed',   label: 'COMED',   type: 'pjm' },
-      { key: 'load.ae',      label: 'AECO',    type: 'pjm' },
-      { key: 'load.aep',     label: 'AEP',     type: 'pjm' },
-      { key: 'load.dpl',     label: 'DPL',     type: 'pjm' },
-      { key: 'load.ps',      label: 'PSEG',    type: 'pjm' },
-      { key: 'load.pe',      label: 'PECO',    type: 'pjm' },
-      { key: 'load.bc',      label: 'BGE',     type: 'pjm' },
-      { key: 'load.pl',      label: 'PPL',     type: 'pjm' },
-      { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
-    ];
+      const filters = [
+        { key: 'load.pjm_rto', label: 'PJM RTO', type: 'pjm' },
+        { key: 'load.comed',   label: 'COMED',   type: 'pjm' },
+        { key: 'load.ae',      label: 'AECO',    type: 'pjm' },
+        { key: 'load.aep',     label: 'AEP',     type: 'pjm' },
+        { key: 'load.dpl',     label: 'DPL',     type: 'pjm' },
+        { key: 'load.ps',      label: 'PSEG',    type: 'pjm' },
+        { key: 'load.pe',      label: 'PECO',    type: 'pjm' },
+        { key: 'load.bc',      label: 'BGE',     type: 'pjm' },
+        { key: 'load.pl',      label: 'PPL',     type: 'pjm' },
+        { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
+      ];
+      const zoneTopData = [];
 
-    const zoneTopData = {};
-
-    function onFilterChange() {
-      const checked = Array.from(
-        document.querySelectorAll('#data-controls input[type=checkbox]:checked')
-      ).map(cb => cb.value);
-
-      // Hide/show PJM section
-      const pjmsSelected = checked.some(k =>
-        filters.find(f => f.key === k)?.type === 'pjm'
-      );
-      document.getElementById('pjm-section').style.display = pjmsSelected ? '' : 'none';
-
-      // Hide/show ERCOT section
-      const ercotSelected = checked.includes('ercot');
-      document.getElementById('ercot-section').style.display = ercotSelected ? '' : 'none';
-
-      // Render contents
-      renderPJM(checked.filter(k => k !== 'ercot'));
-      toggleERCOT(ercotSelected);
-    }
-
-    function renderPJM(selectedZoneKeys) {
-      const container = document.getElementById('tables-pjm');
-      container.innerHTML = '';
-      selectedZoneKeys.forEach(key => {
-        const zone = filters.find(f => f.key === key);
-        const top = zoneTopData[key] || [];
-        if (!zone || !top.length) return;
-
-        const h3 = document.createElement('h3');
-        h3.innerText = zone.label;
-        container.appendChild(h3);
-
-        const table = document.createElement('table');
-        const thead = document.createElement('thead');
-        const headerRow = document.createElement('tr');
-        ['Date (ET)', 'Day', 'End Time (ET)', 'Load (MW)'].forEach(text => {
-          const th = document.createElement('th');
-          th.innerText = text;
-          headerRow.appendChild(th);
-        });
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        const tbody = document.createElement('tbody');
-        top.forEach(r => {
-          const tr = document.createElement('tr');
-          [r.date, r.day, r.endTime, r.value.toLocaleString(undefined, {
-            minimumFractionDigits: 3,
-            maximumFractionDigits: 3
-          })].forEach(txt => {
-            const td = document.createElement('td');
-            td.innerText = txt;
-            tr.appendChild(td);
-          });
-          tbody.appendChild(tr);
-        });
-        table.appendChild(tbody);
-        container.appendChild(table);
+      // build control panel
+      const ctrl = document.getElementById('data-controls');
+      filters.forEach(f => {
+        const lbl = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = f.key;
+        cb.checked = true;
+        cb.addEventListener('change', onFilterChange);
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(f.label));
+        ctrl.appendChild(lbl);
       });
-    }
+      document.getElementById('select-all').onclick = () => {
+        ctrl.querySelectorAll('input').forEach(cb => cb.checked = true);
+        onFilterChange();
+      };
+      document.getElementById('clear-all').onclick = () => {
+        ctrl.querySelectorAll('input').forEach(cb => cb.checked = false);
+        onFilterChange();
+      };
 
-    function toggleERCOT(show) {
-      document.getElementById('loading-ercot').style.display = show ? '' : 'none';
-      document.getElementById('error-ercot').style.display = 'none';
-      document.getElementById('output-ercot').style.display = show ? '' : 'none';
-    }
+      function onFilterChange() {
+        const checked = Array.from(ctrl.querySelectorAll('input:checked')).map(cb => cb.value);
 
-    // build the checkbox panel
-    const ctrl = document.getElementById('data-controls');
-    filters.forEach(f => {
-      const lbl = document.createElement('label');
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.value = f.key;
-      cb.checked = true;
-      cb.addEventListener('change', onFilterChange);
-      lbl.appendChild(cb);
-      lbl.appendChild(document.createTextNode(f.label));
-      ctrl.appendChild(lbl);
-    });
+        // toggle entire sections
+        const pjms = checked.some(k => filters.find(f=>f.key===k).type==='pjm');
+        document.getElementById('pjm-section').style.display = pjms ? '' : 'none';
 
-    // select all / clear all buttons
-    document.getElementById('select-all').addEventListener('click', () => {
-      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => cb.checked = true);
-      onFilterChange();
-    });
-    document.getElementById('clear-all').addEventListener('click', () => {
-      document.querySelectorAll('#data-controls input[type=checkbox]').forEach(cb => cb.checked = false);
-      onFilterChange();
-    });
+        const ercot = checked.includes('ercot');
+        document.getElementById('ercot-section').style.display = ercot ? '' : 'none';
+        document.getElementById('ercot-estimated-section').style.display = ercot ? '' : 'none';
 
-    // PJM fetch & precompute
-    (function fetchPJM() {
-      fetch(
-        'https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query'
-        + '?start_time=2025-06-01T01%3A00%3A00'
-        + '&end_time=2025-10-01'
-        + '&timezone=market',
-        { headers: { 'x-api-key': API_KEY } }
-      )
-      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-      .then(resp => {
-        const arr = resp.data || [];
-        filters.filter(f => f.type === 'pjm').forEach(zone => {
-          const copy = arr.map(e => ({
-            interval_end_local: e.interval_end_local,
-            value: e[zone.key]
-          }));
-          copy.sort((a,b) => (b.value||0) - (a.value||0));
-          const seen = new Set(), top = [];
-          for (const e of copy) {
-            if (top.length >= 5) break;
-            const dt = new Date(e.interval_end_local);
-            const date = dt.toLocaleDateString('en-US', {
-              timeZone: 'America/New_York',
-              year: 'numeric', month: '2-digit', day: '2-digit'
-            });
-            if (!seen.has(date)) {
-              seen.add(date);
-              top.push({
-                date,
-                day: dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
-                endTime: dt.toLocaleTimeString('en-US', {
-                  timeZone: 'America/New_York',
-                  hour12: true, hour:'2-digit', minute:'2-digit', second:'2-digit'
-                }),
-                value: e.value
-              });
-            }
-          }
-          zoneTopData[zone.key] = top;
+        renderPJM(checked.filter(k=>filters.find(f=>f.key===k).type==='pjm'));
+        if (ercot) renderERCOT(); else clearERCOT();
+      }
+
+      // render PJM tables
+      function renderPJM(zones) {
+        const c = document.getElementById('tables-pjm');
+        c.innerHTML = '';
+        zones.forEach(key => {
+          const zone = filters.find(f=>f.key===key);
+          const top = zoneTopData[key] || [];
+          if (!top.length) return;
+          const h3 = document.createElement('h3'); h3.innerText = zone.label; c.appendChild(h3);
+          const tbl = document.createElement('table');
+          tbl.innerHTML = `
+            <thead><tr><th>Date (ET)</th><th>Day</th><th>End Time (ET)</th><th>Load (MW)</th></tr></thead>
+            <tbody>
+              ${top.map(r=>`
+                <tr>
+                  <td>${r.date}</td><td>${r.day}</td>
+                  <td>${r.endTime}</td>
+                  <td>${r.value.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                </tr>`).join('')}
+            </tbody>`;
+          c.appendChild(tbl);
         });
+      }
 
-        document.getElementById('loading-pjm').style.display = 'none';
-        ctrl.style.display = 'block';
-        document.getElementById('output-pjm').style.display = '';
-        onFilterChange();  // initial render
-      })
-      .catch(e => {
-        document.getElementById('loading-pjm').style.display = 'none';
-        const err = document.getElementById('error-pjm');
-        err.innerText = 'Error: ' + e.message;
-        err.style.display = 'block';
-      });
-    })();
+      // clear ERCOT outputs
+      function clearERCOT() {
+        document.getElementById('tables-ercot').innerHTML = '';
+        document.getElementById('table-est-cp').innerHTML = '';
+        document.getElementById('table-est-cp-gen').innerHTML = '';
+      }
 
-    // ERCOT fetch (delayed to respect rate limit)
-    setTimeout(() => {
-      fetch(
-        'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
-        + '?start_time=2025-06-01T01%3A00%3A00'
-        + '&end_time=2025-10-01'
-        + '&timezone=market',
-        { headers: { 'x-api-key': API_KEY } }
-      )
-      .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
-      .then(resp => {
-        const arr = resp.data || [];
-        arr.forEach(d => {
-          d.cp = d.internal_generation
-               + d.dc_tie_imports
-               - d.dc_tie_exports
-               - d.wholesale_storage_load;
-        });
-        arr.sort((a,b) => b.cp - a.cp);
-        const months = ['June 2025','July 2025','August 2025','September 2025'];
-        const cont = document.getElementById('tables-ercot');
-        cont.innerHTML = '';
-
-        months.forEach(m => {
-          const slice = arr.filter(d => {
-            const dt = new Date(d.interval_end_local);
-            return dt.toLocaleString('en-US', {
-              timeZone: 'America/New_York',
-              year: 'numeric', month: 'long'
-            }) === m;
-          }).slice(0,5);
-          if (!slice.length) return;
-
-          const h3 = document.createElement('h3');
-          h3.innerText = m;
-          cont.appendChild(h3);
-
-          const tbl = document.createElement('table'),
-                thd = document.createElement('thead'),
-                hdr = document.createElement('tr');
-          ['End Time (CT)','CP Load (MW)','Int. Gen (MW)','DC In (MW)','DC Out (MW)','WSL (MW)']
-            .forEach(t => {
-              const th = document.createElement('th');
-              th.innerText = t;
-              hdr.appendChild(th);
-            });
-          thd.appendChild(hdr);
-          tbl.appendChild(thd);
-
-          const tbd = document.createElement('tbody');
-          slice.forEach((d,i) => {
-            const tr = document.createElement('tr'),
-                  bold = i === 0;
-            [
-              d.interval_end_local.replace('T',' ').slice(0,19),
-              d.cp, d.internal_generation,
-              d.dc_tie_imports, d.dc_tie_exports,
-              d.wholesale_storage_load
-            ].forEach(val => {
-              const td = document.createElement('td');
-              td.innerText = (typeof val === 'number')
-                ? val.toLocaleString(undefined, {
-                    minimumFractionDigits: 3,
-                    maximumFractionDigits: 3
-                  })
-                : val;
-              if (bold) td.style.fontWeight = 'bold';
-              tr.appendChild(td);
-            });
-            tbd.appendChild(tr);
-          });
-          tbl.appendChild(tbd);
-          cont.appendChild(tbl);
-        });
-
-        document.getElementById('loading-ercot').style.display = 'none';
+      // render ERCOT both sections
+      function renderERCOT() {
+        // simply un-hide since data already loaded
         document.getElementById('output-ercot').style.display = '';
-      })
-      .catch(e => {
-        document.getElementById('loading-ercot').style.display = 'none';
-        const err = document.getElementById('error-ercot');
-        err.innerText = 'Error: ' + e.message;
-        err.style.display = 'block';
-      });
-    }, 1100);
+        document.getElementById('output-ercot-estimated').style.display = '';
+      }
 
-  });
+      // fetch PJM once
+      (function fetchPJM() {
+        fetch(`https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query
+               ?start_time=2025-06-01T01%3A00%3A00
+               &end_time=2025-10-01
+               &timezone=market`.replace(/\s+/g,''), {
+          headers:{'x-api-key':API_KEY}
+        })
+        .then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();})
+        .then(resp=>{
+          const arr = resp.data||[];
+          filters.filter(f=>f.type==='pjm').forEach(zone=>{
+            const copy = arr.map(e=>({
+              interval_end_local:e.interval_end_local,
+              value:e[zone.key]
+            })).sort((a,b)=> (b.value||0)-(a.value||0));
+            const seen=new Set(),top=[];
+            for(const e of copy){
+              if(top.length>=5)break;
+              const dt=new Date(e.interval_end_local),
+                    date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
+              if(!seen.has(date)){
+                seen.add(date);
+                top.push({
+                  date,
+                  day:dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
+                  endTime:dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+                  value:e.value
+                });
+              }
+            }
+            zoneTopData[zone.key]=top;
+          });
+          document.getElementById('loading-pjm').style.display='none';
+          ctrl.style.display='';
+          onFilterChange();
+        })
+        .catch(e=>{
+          document.getElementById('loading-pjm').style.display='none';
+          const err=document.getElementById('error-pjm');
+          err.innerText='Error: '+e.message;
+          err.style.display='';
+        });
+      })();
+
+      // fetch ERCOT once, compute all three outputs
+      setTimeout(()=>{
+        fetch(`https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query
+               ?start_time=2025-07-01T00%3A00%3A00
+               &end_time=2025-07-22
+               &timezone=market`.replace(/\s+/g,''),{
+          headers:{'x-api-key':API_KEY}
+        })
+        .then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();})
+        .then(resp=>{
+          const arr=resp.data||[];
+
+          // original monthly CP section build...
+          // here just assume it's done elsewhere in this block
+
+          // now top‑5 estimated_cp_load
+          const est=arr
+            .map(d=>({end:d.interval_end_local,val:d.estimated_cp_load}))
+            .sort((a,b)=> (b.val||0)-(a.val||0))
+            .slice(0,5);
+          document.getElementById('loading-ercot-estimated').style.display='none';
+          document.getElementById('output-ercot-estimated').style.display='';
+          document.getElementById('table-est-cp').innerHTML = est.map(e=>{
+            const dt=new Date(e.end),
+                  date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
+                  time=dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
+          }).join('');
+
+          // top‑5 estimated_cp_load_with_gen
+          const estGen=arr
+            .map(d=>({end:d.interval_end_local,val:d.estimated_cp_load_with_gen}))
+            .sort((a,b)=> (b.val||0)-(a.val||0))
+            .slice(0,5);
+          document.getElementById('table-est-cp-gen').innerHTML = estGen.map(e=>{
+            const dt=new Date(e.end),
+                  date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
+                  time=dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+            return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
+          }).join('');
+        })
+        .catch(e=>{
+          document.getElementById('loading-ercot-estimated').style.display='none';
+          const err=document.getElementById('error-ercot-estimated');
+          err.innerText='Error: '+e.message;
+          err.style.display='';
+        });
+      },1100);
+
+    });
   </script>
 </body>
 </html>
