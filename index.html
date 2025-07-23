@@ -250,7 +250,7 @@
         .then(resp => {
           const arr = resp.data || [];
 
-          // monthly CP section (existing logic)
+          // Monthly CP Load
           arr.forEach(d => {
             d.cp = d.internal_generation + d.dc_tie_imports - d.dc_tie_exports - d.wholesale_storage_load;
           });
@@ -285,14 +285,15 @@
           });
           document.getElementById('loading-ercot').style.display = 'none';
           document.getElementById('output-ercot').style.display = '';
-          
-          // top 5 estimated_cp_load
+
+          // Top 5 estimated_cp_load
           const est = arr
             .filter(d => d.estimated_cp_load != null)
             .map(d => ({ end: d.interval_end_local, val: d.estimated_cp_load }))
             .sort((a,b) => b.val - a.val)
             .slice(0,5);
-          // top 5 estimated_cp_load_using_gen
+
+          // Top 5 estimated_cp_load_using_gen
           const estGen = arr
             .filter(d => d.estimated_cp_load_using_gen != null)
             .map(d => ({ end: d.interval_end_local, val: d.estimated_cp_load_using_gen }))
@@ -302,18 +303,36 @@
           document.getElementById('loading-ercot-estimated').style.display = 'none';
           document.getElementById('output-ercot-estimated').style.display = '';
 
+          // Render Estimated CP Load in CT
           document.getElementById('table-est-cp').innerHTML = est.map(e => {
-            const dt = new Date(e.end),
-                  date = dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
-                  time = dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-            return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
+            const dt = new Date(e.end);
+            const date = dt.toLocaleDateString('en-US',{
+              timeZone:'America/Chicago', month:'2-digit', day:'2-digit', year:'numeric'
+            });
+            const time = dt.toLocaleTimeString('en-US',{
+              timeZone:'America/Chicago', hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'
+            });
+            return `<tr>
+                      <td>${date}</td>
+                      <td>${time}</td>
+                      <td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    </tr>`;
           }).join('');
 
+          // Render Estimated CP Load Using Gen in CT
           document.getElementById('table-est-cp-gen').innerHTML = estGen.map(e => {
-            const dt = new Date(e.end),
-                  date = dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
-                  time = dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
-            return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
+            const dt = new Date(e.end);
+            const date = dt.toLocaleDateString('en-US',{
+              timeZone:'America/Chicago', month:'2-digit', day:'2-digit', year:'numeric'
+            });
+            const time = dt.toLocaleTimeString('en-US',{
+              timeZone:'America/Chicago', hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'
+            });
+            return `<tr>
+                      <td>${date}</td>
+                      <td>${time}</td>
+                      <td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    </tr>`;
           }).join('');
         })
         .catch(e => {
