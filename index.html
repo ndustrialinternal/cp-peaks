@@ -110,7 +110,6 @@
         { key: 'load.pl',      label: 'PPL',     type: 'pjm' },
         { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
       ];
-
       const zoneTopData = {};
 
       // build controls
@@ -138,16 +137,19 @@
       function onFilterChange() {
         const checked = Array.from(ctrl.querySelectorAll('input:checked')).map(cb => cb.value);
 
-        // show/hide sections
-        const pjms = checked.some(k => filters.find(f=>f.key===k).type === 'pjm');
+        // PJM visibility
+        const pjms = checked.some(k => filters.find(f => f.key === k).type === 'pjm');
         document.getElementById('pjm-section').style.display = pjms ? '' : 'none';
+        document.getElementById('output-pjm').style.display  = pjms ? '' : 'none';
 
+        // ERCOT visibility
         const ercot = checked.includes('ercot');
-        document.getElementById('ercot-section').style.display = ercot ? '' : 'none';
+        document.getElementById('ercot-section').style.display           = ercot ? '' : 'none';
+        document.getElementById('output-ercot').style.display            = ercot ? '' : 'none';
         document.getElementById('ercot-estimated-section').style.display = ercot ? '' : 'none';
+        document.getElementById('output-ercot-estimated').style.display = ercot ? '' : 'none';
 
-        renderPJM(checked.filter(k => filters.find(f=>f.key===k).type==='pjm'));
-        if (!ercot) clearERCOT();
+        renderPJM( checked.filter(k => filters.find(f => f.key === k).type === 'pjm') );
       }
 
       function renderPJM(zoneKeys) {
@@ -242,7 +244,7 @@
         fetch(
           'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
           + '?start_time=2025-07-01T00%3A00%3A00'
-          + '&end_time=2025-10-01'
+          + '&end_time=2025-07-22'
           + '&timezone=market',
           { headers: { 'x-api-key': API_KEY } }
         )
@@ -252,7 +254,8 @@
 
           // Monthly CP Load
           arr.forEach(d => {
-            d.cp = d.internal_generation + d.dc_tie_imports - d.dc_tie_exports - d.wholesale_storage_load;
+            d.cp = d.internal_generation + d.dc_tie_imports
+                 - d.dc_tie_exports - d.wholesale_storage_load;
           });
           arr.sort((a,b) => b.cp - a.cp);
           const months = ['June 2025','July 2025','August 2025','September 2025'];
@@ -260,15 +263,18 @@
           months.forEach(m => {
             const slice = arr.filter(d => {
               const dt = new Date(d.interval_end_local);
-              return dt.toLocaleString('en-US',{timeZone:'America/New_York',year:'numeric',month:'long'}) === m;
+              return dt.toLocaleString('en-US',{
+                timeZone:'America/New_York',year:'numeric',month:'long'
+              }) === m;
             }).slice(0,5);
             if (!slice.length) return;
             const h3 = document.createElement('h3'); h3.innerText = m; cont.appendChild(h3);
             const tbl = document.createElement('table');
             tbl.innerHTML = `
               <thead>
-                <tr><th>End Time (CT)</th><th>CP Load (MW)</th><th>Int. Gen (MW)</th>
-                    <th>DC In (MW)</th><th>DC Out (MW)</th><th>WSL (MW)</th></tr>
+                <tr><th>End Time (CT)</th><th>CP Load (MW)</th>
+                    <th>Int. Gen (MW)</th><th>DC In (MW)</th>
+                    <th>DC Out (MW)</th><th>WSL (MW)</th></tr>
               </thead>
               <tbody>
                 ${slice.map((d,i) => `
@@ -303,41 +309,39 @@
           document.getElementById('loading-ercot-estimated').style.display = 'none';
           document.getElementById('output-ercot-estimated').style.display = '';
 
-          // Render Estimated CP Load in CT
+          // Render Estimated CP Load in Central Time
           document.getElementById('table-est-cp').innerHTML = est.map(e => {
             const dt = new Date(e.end);
             const date = dt.toLocaleDateString('en-US',{
-              timeZone:'America/Chicago', month:'2-digit', day:'2-digit', year:'numeric'
+              timeZone:'America/Chicago',month:'2-digit',day:'2-digit',year:'numeric'
             });
-            const time = dt.toLocaleTimeString('en-US',{
-              timeZone:'America/Chicago', hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'
+            const time = dt.toLocaleTimeString('en-US',{ 
+              timeZone:'America/Chicago',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'
             });
             return `<tr>
-                      <td>${date}</td>
-                      <td>${time}</td>
+                      <td>${date}</td><td>${time}</td>
                       <td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
                     </tr>`;
           }).join('');
 
-          // Render Estimated CP Load Using Gen in CT
+          // Render Estimated CP Load Using Gen in Central Time
           document.getElementById('table-est-cp-gen').innerHTML = estGen.map(e => {
             const dt = new Date(e.end);
             const date = dt.toLocaleDateString('en-US',{
-              timeZone:'America/Chicago', month:'2-digit', day:'2-digit', year:'numeric'
+              timeZone:'America/Chicago',month:'2-digit',day:'2-digit',year:'numeric'
             });
-            const time = dt.toLocaleTimeString('en-US',{
-              timeZone:'America/Chicago', hour12:true, hour:'2-digit', minute:'2-digit', second:'2-digit'
+            const time = dt.toLocaleTimeString('en-US',{ 
+              timeZone:'America/Chicago',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'
             });
             return `<tr>
-                      <td>${date}</td>
-                      <td>${time}</td>
+                      <td>${date}</td><td>${time}</td>
                       <td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
                     </tr>`;
           }).join('');
         })
         .catch(e => {
-          document.getElementById('loading-ercot').style.display = 'none';
-          const err = document.getElementById('error-ercot');
+          document.getElementById('loading-ercot-estimated').style.display = 'none';
+          const err = document.getElementById('error-ercot-estimated');
           err.innerText = 'Error: ' + e.message;
           err.style.display = '';
         });
