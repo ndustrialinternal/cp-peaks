@@ -17,9 +17,14 @@
 
     /* controls panel */
     #data-controls {
-      position: fixed; top: 1rem; right: 1rem;
-      background: #fff; border: 1px solid #ddd; border-radius: 4px;
-      padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 1rem;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
       z-index: 1000;
     }
     #data-controls h4 { margin: 0 0 0.5rem; font-size: 1rem; }
@@ -42,7 +47,7 @@
       <button id="select-all" type="button">Select All</button>
       <button id="clear-all" type="button">Clear All</button>
     </div>
-    <!-- checkboxes will go here -->
+    <!-- checkboxes will be inserted here -->
   </div>
 
   <!-- PJM Section -->
@@ -55,7 +60,7 @@
     </div>
   </section>
 
-  <!-- ERCOT Section -->
+  <!-- ERCOT Monthly Section -->
   <section id="ercot-section">
     <h1>ERCOT Demand Top 5 Intervals per Month (CT)</h1>
     <h2>Top 5 15‑minute intervals each month</h2>
@@ -66,7 +71,7 @@
     </div>
   </section>
 
-  <!-- New ERCOT Estimated Section -->
+  <!-- ERCOT Estimated Section -->
   <section id="ercot-estimated-section" style="display:none;">
     <h1>ERCOT Estimated CP Load Metrics (CT)</h1>
     <div id="loading-ercot-estimated">Loading estimated CP data…</div>
@@ -79,10 +84,10 @@
         </thead>
         <tbody id="table-est-cp"></tbody>
       </table>
-      <h2>Top 5 Estimated CP Load with Gen</h2>
+      <h2>Top 5 Estimated CP Load Using Gen</h2>
       <table>
         <thead>
-          <tr><th>Date (CT)</th><th>End Time (CT)</th><th>Est. CP Load w/ Gen (MW)</th></tr>
+          <tr><th>Date (CT)</th><th>End Time (CT)</th><th>Est. CP Load Using Gen (MW)</th></tr>
         </thead>
         <tbody id="table-est-cp-gen"></tbody>
       </table>
@@ -105,9 +110,10 @@
         { key: 'load.pl',      label: 'PPL',     type: 'pjm' },
         { key: 'ercot',        label: 'ERCOT',   type: 'ercot' },
       ];
-      const zoneTopData = [];
 
-      // build control panel
+      const zoneTopData = {};
+
+      // build controls
       const ctrl = document.getElementById('data-controls');
       filters.forEach(f => {
         const lbl = document.createElement('label');
@@ -120,161 +126,203 @@
         lbl.appendChild(document.createTextNode(f.label));
         ctrl.appendChild(lbl);
       });
-      document.getElementById('select-all').onclick = () => {
-        ctrl.querySelectorAll('input').forEach(cb => cb.checked = true);
+      document.getElementById('select-all').addEventListener('click', () => {
+        ctrl.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = true);
         onFilterChange();
-      };
-      document.getElementById('clear-all').onclick = () => {
-        ctrl.querySelectorAll('input').forEach(cb => cb.checked = false);
+      });
+      document.getElementById('clear-all').addEventListener('click', () => {
+        ctrl.querySelectorAll('input[type=checkbox]').forEach(cb => cb.checked = false);
         onFilterChange();
-      };
+      });
 
       function onFilterChange() {
         const checked = Array.from(ctrl.querySelectorAll('input:checked')).map(cb => cb.value);
 
-        // toggle entire sections
-        const pjms = checked.some(k => filters.find(f=>f.key===k).type==='pjm');
+        // show/hide sections
+        const pjms = checked.some(k => filters.find(f=>f.key===k).type === 'pjm');
         document.getElementById('pjm-section').style.display = pjms ? '' : 'none';
 
         const ercot = checked.includes('ercot');
         document.getElementById('ercot-section').style.display = ercot ? '' : 'none';
         document.getElementById('ercot-estimated-section').style.display = ercot ? '' : 'none';
 
-        renderPJM(checked.filter(k=>filters.find(f=>f.key===k).type==='pjm'));
-        if (ercot) renderERCOT(); else clearERCOT();
+        renderPJM(checked.filter(k => filters.find(f=>f.key===k).type==='pjm'));
+        if (!ercot) clearERCOT();
       }
 
-      // render PJM tables
-      function renderPJM(zones) {
-        const c = document.getElementById('tables-pjm');
-        c.innerHTML = '';
-        zones.forEach(key => {
-          const zone = filters.find(f=>f.key===key);
+      function renderPJM(zoneKeys) {
+        const container = document.getElementById('tables-pjm');
+        container.innerHTML = '';
+        zoneKeys.forEach(key => {
+          const zone = filters.find(f => f.key === key);
           const top = zoneTopData[key] || [];
           if (!top.length) return;
-          const h3 = document.createElement('h3'); h3.innerText = zone.label; c.appendChild(h3);
+
+          const h3 = document.createElement('h3');
+          h3.innerText = zone.label;
+          container.appendChild(h3);
+
           const tbl = document.createElement('table');
           tbl.innerHTML = `
-            <thead><tr><th>Date (ET)</th><th>Day</th><th>End Time (ET)</th><th>Load (MW)</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Date (ET)</th><th>Day</th><th>End Time (ET)</th><th>Load (MW)</th>
+              </tr>
+            </thead>
             <tbody>
-              ${top.map(r=>`
+              ${top.map(r => `
                 <tr>
-                  <td>${r.date}</td><td>${r.day}</td>
+                  <td>${r.date}</td>
+                  <td>${r.day}</td>
                   <td>${r.endTime}</td>
                   <td>${r.value.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
                 </tr>`).join('')}
             </tbody>`;
-          c.appendChild(tbl);
+          container.appendChild(tbl);
         });
       }
 
-      // clear ERCOT outputs
       function clearERCOT() {
         document.getElementById('tables-ercot').innerHTML = '';
         document.getElementById('table-est-cp').innerHTML = '';
         document.getElementById('table-est-cp-gen').innerHTML = '';
       }
 
-      // render ERCOT both sections
-      function renderERCOT() {
-        // simply un-hide since data already loaded
-        document.getElementById('output-ercot').style.display = '';
-        document.getElementById('output-ercot-estimated').style.display = '';
-      }
-
-      // fetch PJM once
+      // fetch PJM data
       (function fetchPJM() {
-        fetch(`https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query
-               ?start_time=2025-06-01T01%3A00%3A00
-               &end_time=2025-10-01
-               &timezone=market`.replace(/\s+/g,''), {
-          headers:{'x-api-key':API_KEY}
-        })
-        .then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();})
-        .then(resp=>{
-          const arr = resp.data||[];
-          filters.filter(f=>f.type==='pjm').forEach(zone=>{
-            const copy = arr.map(e=>({
-              interval_end_local:e.interval_end_local,
-              value:e[zone.key]
-            })).sort((a,b)=> (b.value||0)-(a.value||0));
-            const seen=new Set(),top=[];
-            for(const e of copy){
-              if(top.length>=5)break;
-              const dt=new Date(e.interval_end_local),
-                    date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'});
-              if(!seen.has(date)){
+        fetch(
+          'https://api.gridstatus.io/v1/datasets/pjm_standardized_hourly/query'
+          + '?start_time=2025-06-01T01%3A00%3A00'
+          + '&end_time=2025-10-01'
+          + '&timezone=market',
+          { headers: { 'x-api-key': API_KEY } }
+        )
+        .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+        .then(resp => {
+          const arr = resp.data || [];
+          filters.filter(f => f.type === 'pjm').forEach(zone => {
+            const copy = arr
+              .map(e => ({ interval_end_local: e.interval_end_local, value: e[zone.key] }))
+              .sort((a,b) => (b.value||0) - (a.value||0));
+            const seen = new Set(), top = [];
+            for (const e of copy) {
+              if (top.length >= 5) break;
+              const dt = new Date(e.interval_end_local);
+              const date = dt.toLocaleDateString('en-US',{
+                timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'
+              });
+              if (!seen.has(date)) {
                 seen.add(date);
                 top.push({
                   date,
-                  day:dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
-                  endTime:dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-                  value:e.value
+                  day: dt.toLocaleDateString('en-US',{weekday:'short',timeZone:'America/New_York'}),
+                  endTime: dt.toLocaleTimeString('en-US',{
+                    timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'
+                  }),
+                  value: e.value
                 });
               }
             }
-            zoneTopData[zone.key]=top;
+            zoneTopData[zone.key] = top;
           });
-          document.getElementById('loading-pjm').style.display='none';
-          ctrl.style.display='';
+          document.getElementById('loading-pjm').style.display = 'none';
+          ctrl.style.display = '';
           onFilterChange();
         })
-        .catch(e=>{
-          document.getElementById('loading-pjm').style.display='none';
-          const err=document.getElementById('error-pjm');
-          err.innerText='Error: '+e.message;
-          err.style.display='';
+        .catch(e => {
+          document.getElementById('loading-pjm').style.display = 'none';
+          const err = document.getElementById('error-pjm');
+          err.innerText = 'Error: ' + e.message;
+          err.style.display = '';
         });
       })();
 
-      // fetch ERCOT once, compute all three outputs
-      setTimeout(()=>{
-        fetch(`https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query
-               ?start_time=2025-07-01T00%3A00%3A00
-               &end_time=2025-07-22
-               &timezone=market`.replace(/\s+/g,''),{
-          headers:{'x-api-key':API_KEY}
-        })
-        .then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();})
-        .then(resp=>{
-          const arr=resp.data||[];
+      // fetch ERCOT monthly and estimated data
+      setTimeout(() => {
+        fetch(
+          'https://api.gridstatus.io/v1/datasets/ercot_estimated_coincident_peak_load/query'
+          + '?start_time=2025-07-01T00%3A00%3A00'
+          + '&end_time=2025-07-22'
+          + '&timezone=market',
+          { headers: { 'x-api-key': API_KEY } }
+        )
+        .then(r => { if (!r.ok) throw new Error(r.statusText); return r.json(); })
+        .then(resp => {
+          const arr = resp.data || [];
 
-          // original monthly CP section build...
-          // here just assume it's done elsewhere in this block
-
-          // now top‑5 estimated_cp_load
-          const est=arr
-            .map(d=>({end:d.interval_end_local,val:d.estimated_cp_load}))
-            .sort((a,b)=> (b.val||0)-(a.val||0))
+          // monthly CP section (existing logic)
+          arr.forEach(d => {
+            d.cp = d.internal_generation + d.dc_tie_imports - d.dc_tie_exports - d.wholesale_storage_load;
+          });
+          arr.sort((a,b) => b.cp - a.cp);
+          const months = ['June 2025','July 2025','August 2025','September 2025'];
+          const cont = document.getElementById('tables-ercot');
+          months.forEach(m => {
+            const slice = arr.filter(d => {
+              const dt = new Date(d.interval_end_local);
+              return dt.toLocaleString('en-US',{timeZone:'America/New_York',year:'numeric',month:'long'}) === m;
+            }).slice(0,5);
+            if (!slice.length) return;
+            const h3 = document.createElement('h3'); h3.innerText = m; cont.appendChild(h3);
+            const tbl = document.createElement('table');
+            tbl.innerHTML = `
+              <thead>
+                <tr><th>End Time (CT)</th><th>CP Load (MW)</th><th>Int. Gen (MW)</th>
+                    <th>DC In (MW)</th><th>DC Out (MW)</th><th>WSL (MW)</th></tr>
+              </thead>
+              <tbody>
+                ${slice.map((d,i) => `
+                  <tr${i===0?' style="font-weight:bold"':''}>
+                    <td>${d.interval_end_local.replace('T',' ').slice(0,19)}</td>
+                    <td>${d.cp.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    <td>${d.internal_generation.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    <td>${d.dc_tie_imports.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    <td>${d.dc_tie_exports.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                    <td>${d.wholesale_storage_load.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td>
+                  </tr>`).join('')}
+              </tbody>`;
+            cont.appendChild(tbl);
+          });
+          document.getElementById('loading-ercot').style.display = 'none';
+          document.getElementById('output-ercot').style.display = '';
+          
+          // top 5 estimated_cp_load
+          const est = arr
+            .filter(d => d.estimated_cp_load != null)
+            .map(d => ({ end: d.interval_end_local, val: d.estimated_cp_load }))
+            .sort((a,b) => b.val - a.val)
             .slice(0,5);
-          document.getElementById('loading-ercot-estimated').style.display='none';
-          document.getElementById('output-ercot-estimated').style.display='';
-          document.getElementById('table-est-cp').innerHTML = est.map(e=>{
-            const dt=new Date(e.end),
-                  date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
-                  time=dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+          // top 5 estimated_cp_load_using_gen
+          const estGen = arr
+            .filter(d => d.estimated_cp_load_using_gen != null)
+            .map(d => ({ end: d.interval_end_local, val: d.estimated_cp_load_using_gen }))
+            .sort((a,b) => b.val - a.val)
+            .slice(0,5);
+
+          document.getElementById('loading-ercot-estimated').style.display = 'none';
+          document.getElementById('output-ercot-estimated').style.display = '';
+
+          document.getElementById('table-est-cp').innerHTML = est.map(e => {
+            const dt = new Date(e.end),
+                  date = dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
+                  time = dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
             return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
           }).join('');
 
-          // top‑5 estimated_cp_load_with_gen
-          const estGen=arr
-            .map(d=>({end:d.interval_end_local,val:d.estimated_cp_load_with_gen}))
-            .sort((a,b)=> (b.val||0)-(a.val||0))
-            .slice(0,5);
-          document.getElementById('table-est-cp-gen').innerHTML = estGen.map(e=>{
-            const dt=new Date(e.end),
-                  date=dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
-                  time=dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+          document.getElementById('table-est-cp-gen').innerHTML = estGen.map(e => {
+            const dt = new Date(e.end),
+                  date = dt.toLocaleDateString('en-US',{timeZone:'America/New_York',month:'2-digit',day:'2-digit',year:'numeric'}),
+                  time = dt.toLocaleTimeString('en-US',{timeZone:'America/New_York',hour12:true,hour:'2-digit',minute:'2-digit',second:'2-digit'});
             return `<tr><td>${date}</td><td>${time}</td><td>${e.val.toLocaleString(undefined,{minimumFractionDigits:3,maximumFractionDigits:3})}</td></tr>`;
           }).join('');
         })
-        .catch(e=>{
-          document.getElementById('loading-ercot-estimated').style.display='none';
-          const err=document.getElementById('error-ercot-estimated');
-          err.innerText='Error: '+e.message;
-          err.style.display='';
+        .catch(e => {
+          document.getElementById('loading-ercot').style.display = 'none';
+          const err = document.getElementById('error-ercot');
+          err.innerText = 'Error: ' + e.message;
+          err.style.display = '';
         });
-      },1100);
+      }, 1100);
 
     });
   </script>
