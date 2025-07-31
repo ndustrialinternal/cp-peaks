@@ -70,19 +70,21 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsbWRrZGV5ZW10YnVvcXpobW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzODczNzUsImV4cCI6MjA2ODk2MzM3NX0.D67p_so_Tkok6wCAt4_2w6xqVcrEC9wYnyohe0E7huc';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // ─── Filters / State ─────────────────────────────────────────────────────
-    const filters = [
-      { key: 'AE',    label: 'AECO',  type: 'pjm' },
-      { key: 'AEP',   label: 'AEP',   type: 'pjm' },
-      { key: 'BC',    label: 'BGE',   type: 'pjm' },
-      { key: 'COMED', label: 'COMED', type: 'pjm' },
-      { key: 'DPL',   label: 'DPL',   type: 'pjm' },
-      { key: 'PE',    label: 'PECO',  type: 'pjm' },
-      { key: 'PS',    label: 'PSEG',  type: 'pjm' },
-      { key: 'PL',    label: 'PPL',   type: 'pjm' },
-      { key: 'ERCOT', label: 'ERCOT', type: 'ercot' },
-    ];
-    const zoneTopData = {};
+// ─── Filters / State ─────────────────────────────────────────────────────
+const filters = [
+  { key: 'RTO',   label: 'PJM RTO', type: 'pjm' },  // ← add this
+  { key: 'AE',    label: 'AECO',     type: 'pjm' },
+  { key: 'AEP',   label: 'AEP',      type: 'pjm' },
+  { key: 'BC',    label: 'BGE',      type: 'pjm' },
+  { key: 'COMED', label: 'COMED',    type: 'pjm' },
+  { key: 'DPL',   label: 'DPL',      type: 'pjm' },
+  { key: 'PE',    label: 'PECO',     type: 'pjm' },
+  { key: 'PS',    label: 'PSEG',     type: 'pjm' },
+  { key: 'PL',    label: 'PPL',      type: 'pjm' },
+  { key: 'ERCOT', label: 'ERCOT',    type: 'ercot' },
+];
+const zoneTopData = {};
+
 
     // ─── Build controls ──────────────────────────────────────────────────────
     const ctrl = document.getElementById('data-controls');
@@ -236,7 +238,7 @@
             <thead>
               <tr>
                 <th>End Time (CT)</th><th>CP Load (MW)</th>
-                <th>Op. Load</th><th>DC In</th><th>DC Out</th><th>WSL</th>
+                <th>Int. Gen</th><th>DC In</th><th>DC Out</th><th>WSL</th>
               </tr>
             </thead>
             <tbody>
