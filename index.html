@@ -4,63 +4,365 @@
   <meta charset="UTF-8" />
   <title>Coincident Peak Program Current Peaks</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 2rem; background-color: #f9f9f9; color: #333; }
-    h1 { margin-bottom: 0.5rem; }
-    h2 { margin-bottom: 1rem; font-size: 0.9rem; color: #555; }
-    h3 { margin-top: 2rem; margin-bottom: 0.5rem; }
-    section { margin-top: 2rem; padding: 1rem; background: #fff; border: 1px solid #ddd; border-radius: 4px; }
-    #loading-pjm, #loading-ercot { font-style: italic; color: #666; }
-    .error { color: #c00; margin-top: 0.5rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; margin-bottom: 1.5rem; }
-    th, td { padding: 0.5rem; border: 1px solid #ccc; text-align: center; }
-    th { background-color: #f0f0f0; }
-    #data-controls {
-      position: fixed; top: 1rem; right: 1rem;
-      background: #fff; border: 1px solid #ddd; border-radius:4px;
-      padding:1rem; box-shadow:0 2px 6px rgba(0,0,0,0.1); z-index:1000;
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    #data-controls h4 { margin:0 0 .5rem; font-size:1rem; }
-    #control-buttons { margin-bottom:.5rem; }
-    #control-buttons button { margin-right:.5rem; }
-    #data-controls label { display:block; margin-bottom:.25rem; cursor:pointer; }
-    #data-controls input[type="checkbox"] { margin-right:.5rem; }
+
+    body { 
+      font-family: Arial, sans-serif; 
+      background-color: #f5f5f5; 
+      color: #333;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Navigation Sidebar */
+    .sidebar {
+      width: 250px;
+      background: linear-gradient(135deg, #8DB843 0%, #6B9532 100%);
+      color: white;
+      position: fixed;
+      height: 100vh;
+      left: 0;
+      top: 0;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 1.5rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      background: rgba(0,0,0,0.1);
+    }
+
+    .sidebar-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: white;
+      text-decoration: none;
+    }
+
+    .nav-menu {
+      padding: 1rem 0;
+    }
+
+    .nav-item {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      color: rgba(255,255,255,0.9);
+      text-decoration: none;
+      transition: all 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.1);
+      color: white;
+      border-left-color: #fff;
+    }
+
+    .nav-item.active {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border-left-color: #fff;
+      font-weight: 500;
+    }
+
+    /* Main Content */
+    .main-content {
+      margin-left: 250px;
+      padding: 2rem;
+      width: calc(100% - 250px);
+    }
+
+    h1 { 
+      margin-bottom: 0.5rem; 
+      color: #333;
+    }
+    
+    h2 { 
+      margin-bottom: 1rem; 
+      font-size: 0.9rem; 
+      color: #555; 
+    }
+    
+    h3 { 
+      margin-top: 2rem; 
+      margin-bottom: 0.5rem; 
+      color: #444;
+    }
+
+    section { 
+      margin-top: 2rem; 
+      padding: 1.5rem; 
+      background: #fff; 
+      border: 1px solid #e0e0e0; 
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    #loading-pjm, #loading-ercot { 
+      font-style: italic; 
+      color: #666; 
+    }
+
+    .error { 
+      color: #D63031; 
+      margin-top: 0.5rem; 
+    }
+
+    table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 0.5rem; 
+      margin-bottom: 1.5rem; 
+    }
+
+    th, td { 
+      padding: 0.75rem 0.5rem; 
+      border: 1px solid #e0e0e0; 
+      text-align: center; 
+    }
+
+    th { 
+      background-color: #f8f9fa; 
+      font-weight: 600;
+      color: #495057;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+
+    tr:hover {
+      background-color: #f0f0f0;
+    }
+
+    #data-controls {
+      position: fixed; 
+      top: 1rem; 
+      right: 1rem;
+      z-index: 1001;
+    }
+
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-button {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #495057;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 150px;
+      justify-content: space-between;
+    }
+
+    .dropdown-button:hover {
+      background: #f8f9fa;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+      border-color: #8DB843;
+    }
+
+    .dropdown-arrow {
+      transition: transform 0.2s ease;
+      color: #8DB843;
+    }
+
+    .dropdown.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+
+    .dropdown-content {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      padding: 0.75rem;
+      min-width: 220px;
+      max-height: 300px;
+      overflow-y: auto;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.2s ease;
+    }
+
+    .dropdown.open .dropdown-content {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .dropdown-header {
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .dropdown-buttons {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .dropdown-buttons button {
+      padding: 0.4rem 0.6rem;
+      border: 1px solid #8DB843;
+      background: #fff;
+      color: #8DB843;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.2s ease;
+      flex: 1;
+    }
+
+    .dropdown-buttons button:hover {
+      background: #8DB843;
+      color: white;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      padding: 0.4rem 0;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.2s ease;
+    }
+
+    .checkbox-item:hover {
+      background: #f8f9fa;
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      margin-right: 0.75rem;
+      cursor: pointer;
+      accent-color: #8DB843;
+    }
+
+    .checkbox-item label {
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #495057;
+    }
+
+    #alerts-button {
+      position: absolute;
+      top: 1rem;
+      left: 270px;
+      padding: 0.75rem 1.5rem;
+      background: linear-gradient(135deg, #8DB843 0%, #6B9532 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 2px 8px rgba(141, 184, 67, 0.3);
+    }
+
+    #alerts-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(141, 184, 67, 0.4);
+    }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+      }
+      
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+      }
+      
+      #data-controls {
+        position: relative;
+        top: 0;
+        right: 0;
+        margin-bottom: 1rem;
+      }
+    }
   </style>
 </head>
 <body>
-  <button id="alerts-button"
-          onclick="window.location.href='https://ndustrialinternal.github.io/amp-cp-alerts/';">
-    Open Amp CP Alerts
-  </button>
-
-  <div id="data-controls" style="display:none;">
-    <h4>Select Data</h4>
-    <div id="control-buttons">
-      <button id="select-all" type="button">Select All</button>
-      <button id="clear-all"  type="button">Clear All</button>
+  <!-- Left Navigation Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="sidebar-title">CP Dashboard</a>
     </div>
-    <!-- checkboxes inserted here -->
+    <div class="nav-menu">
+      <a href="https://ndustrialinternal.github.io/amp-cp-alerts/" class="nav-item">CP Predictions</a>
+      <a href="https://ndustrialinternal.github.io/cp-peaks/" class="nav-item active">CP Peaks</a>
+      <a href="https://ndustrialinternal.github.io/current-cp-loads/" class="nav-item">Load Profiles</a>
+      <a href="https://ndustrialinternal.github.io/cp-pred-analysis/" class="nav-item">Prediction Analytics</a>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <div id="data-controls">
+      <div class="dropdown" id="filter-dropdown">
+        <button class="dropdown-button" id="dropdown-btn">
+          <span>Select Data</span>
+          <span class="dropdown-arrow">▼</span>
+        </button>
+        <div class="dropdown-content" id="dropdown-content">
+          <div class="dropdown-header">Filter Options</div>
+          <div class="dropdown-buttons">
+            <button id="select-all" type="button">Select All</button>
+            <button id="clear-all" type="button">Clear All</button>
+          </div>
+          <div id="checkbox-container">
+            <!-- checkboxes inserted here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PJM Section -->
+    <section id="pjm-section">
+      <h1>PJM Demand Top 5 Daily Peaks by Zone (ET)</h1>
+      <div id="loading-pjm">Loading PJM data…</div>
+      <div id="error-pjm" class="error" style="display:none;"></div>
+      <div id="output-pjm" style="display:none;">
+        <div id="tables-pjm"></div>
+      </div>
+    </section>
+
+    <!-- ERCOT Monthly Section -->
+    <section id="ercot-section">
+      <h1>ERCOT Demand Top 5 Intervals per Month (CT)</h1>
+      <h2>Top 5 15‑minute intervals each month</h2>
+      <div id="loading-ercot">Loading ERCOT data…</div>
+      <div id="error-ercot" class="error" style="display:none;"></div>
+      <div id="output-ercot" style="display:none;">
+        <div id="tables-ercot"></div>
+      </div>
+    </section>
   </div>
-
-  <!-- PJM Section -->
-  <section id="pjm-section">
-    <h1>PJM Demand Top 5 Daily Peaks by Zone (ET)</h1>
-    <div id="loading-pjm">Loading PJM data…</div>
-    <div id="error-pjm" class="error" style="display:none;"></div>
-    <div id="output-pjm" style="display:none;">
-      <div id="tables-pjm"></div>
-    </div>
-  </section>
-
-  <!-- ERCOT Monthly Section -->
-  <section id="ercot-section">
-    <h1>ERCOT Demand Top 5 Intervals per Month (CT)</h1>
-    <h2>Top 5 15‑minute intervals each month</h2>
-    <div id="loading-ercot">Loading ERCOT data…</div>
-    <div id="error-ercot" class="error" style="display:none;"></div>
-    <div id="output-ercot" style="display:none;">
-      <div id="tables-ercot"></div>
-    </div>
-  </section>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -70,45 +372,96 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsbWRrZGV5ZW10YnVvcXpobW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzODczNzUsImV4cCI6MjA2ODk2MzM3NX0.D67p_so_Tkok6wCAt4_2w6xqVcrEC9wYnyohe0E7huc';
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ─── Filters / State ─────────────────────────────────────────────────────
-const filters = [
-  { key: 'RTO',   label: 'PJM RTO', type: 'pjm' },  // ← add this
-  { key: 'AE',    label: 'AECO',     type: 'pjm' },
-  { key: 'AEP',   label: 'AEP',      type: 'pjm' },
-  { key: 'BC',    label: 'BGE',      type: 'pjm' },
-  { key: 'CE', label: 'COMED',    type: 'pjm' },
-  { key: 'DPL',   label: 'DPL',      type: 'pjm' },
-  { key: 'PE',    label: 'PECO',     type: 'pjm' },
-  { key: 'PS',    label: 'PSEG',     type: 'pjm' },
-  { key: 'PL',    label: 'PPL',      type: 'pjm' },
-  { key: 'ERCOT', label: 'ERCOT',    type: 'ercot' },
-];
-const zoneTopData = {};
-
+    // ─── Filters / State ─────────────────────────────────────────────────────
+    const filters = [
+      { key: 'RTO',   label: 'PJM RTO', type: 'pjm' },
+      { key: 'AE',    label: 'AECO',     type: 'pjm' },
+      { key: 'AEP',   label: 'AEP',      type: 'pjm' },
+      { key: 'BC',    label: 'BGE',      type: 'pjm' },
+      { key: 'CE',    label: 'COMED',    type: 'pjm' },
+      { key: 'DPL',   label: 'DPL',      type: 'pjm' },
+      { key: 'PE',    label: 'PECO',     type: 'pjm' },
+      { key: 'PS',    label: 'PSEG',     type: 'pjm' },
+      { key: 'PL',    label: 'PPL',      type: 'pjm' },
+      { key: 'ERCOT', label: 'ERCOT',    type: 'ercot' },
+    ];
+    const zoneTopData = {};
 
     // ─── Build controls ──────────────────────────────────────────────────────
-    const ctrl = document.getElementById('data-controls');
+    const ctrl = document.getElementById('checkbox-container');
+    const dropdownBtn = document.getElementById('dropdown-btn');
+    const dropdown = document.getElementById('filter-dropdown');
+    const dropdownContent = document.getElementById('dropdown-content');
+
+    // Build checkbox items
     filters.forEach(f => {
-      const lbl = document.createElement('label');
-      const cb  = document.createElement('input');
-      cb.type    = 'checkbox';
-      cb.value   = f.key;
+      const item = document.createElement('div');
+      item.className = 'checkbox-item';
+      
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = f.key;
       cb.checked = true;
+      cb.id = `checkbox-${f.key}`;
       cb.addEventListener('change', onFilterChange);
-      lbl.appendChild(cb);
-      lbl.appendChild(document.createTextNode(f.label));
-      ctrl.appendChild(lbl);
+      
+      const lbl = document.createElement('label');
+      lbl.setAttribute('for', `checkbox-${f.key}`);
+      lbl.textContent = f.label;
+      
+      item.appendChild(cb);
+      item.appendChild(lbl);
+      ctrl.appendChild(item);
     });
+
+    // Dropdown toggle functionality
+    dropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('open');
+      }
+    });
+
+    // Prevent dropdown from closing when clicking inside content
+    dropdownContent.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+
+    // Update dropdown button text based on selections
+    function updateDropdownText() {
+      const checked = Array.from(ctrl.querySelectorAll('input:checked'));
+      const total = ctrl.querySelectorAll('input').length;
+      const checkedCount = checked.length;
+      
+      const btnSpan = dropdownBtn.querySelector('span:first-child');
+      if (checkedCount === 0) {
+        btnSpan.textContent = 'No Data Selected';
+      } else if (checkedCount === total) {
+        btnSpan.textContent = 'All Data Selected';
+      } else {
+        btnSpan.textContent = `${checkedCount} of ${total} Selected`;
+      }
+    }
+    
     document.getElementById('select-all').onclick = () => {
       ctrl.querySelectorAll('input').forEach(cb => cb.checked = true);
+      updateDropdownText();
       onFilterChange();
     };
+    
     document.getElementById('clear-all').onclick = () => {
       ctrl.querySelectorAll('input').forEach(cb => cb.checked = false);
+      updateDropdownText();
       onFilterChange();
     };
 
     function onFilterChange() {
+      updateDropdownText();
       const checked = Array.from(ctrl.querySelectorAll('input:checked')).map(cb => cb.value);
       const showPJM   = checked.some(k => filters.find(f => f.key===k).type==='pjm');
       const showERCOT = checked.includes('ERCOT');
@@ -191,7 +544,6 @@ const zoneTopData = {};
         });
 
         document.getElementById('loading-pjm').style.display = 'none';
-        ctrl.style.display = '';
         onFilterChange();
       } catch (e) {
         document.getElementById('loading-pjm').style.display = 'none';
