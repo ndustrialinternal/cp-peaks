@@ -516,13 +516,13 @@
       try {
         const { data, error } = await supabase
           .from('pjm_peaks')
-          .select('interval_end_utc, zone, mw');
+          .select('interval_start_utc, zone, mw');
         if (error) throw error;
 
         filters.filter(f => f.type==='pjm').forEach(({ key }) => {
           const rows = data.filter(r => r.zone === key);
           zoneTopData[key] = rows.map(r => {
-            const dt = new Date(r.interval_end_utc);
+            const dt = new Date(r.interval_start_utc);
             return {
               date: dt.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
