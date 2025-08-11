@@ -516,7 +516,7 @@
       try {
         const { data, error } = await supabase
           .from('pjm_peaks')
-          .select('interval_start_utc, zone, mw');
+          .select('interval_end_utc, zone, mw');
         if (error) throw error;
 
         filters.filter(f => f.type==='pjm').forEach(({ key }) => {
