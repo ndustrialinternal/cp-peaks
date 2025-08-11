@@ -522,17 +522,20 @@
         filters.filter(f => f.type==='pjm').forEach(({ key }) => {
           const rows = data.filter(r => r.zone === key);
           zoneTopData[key] = rows.map(r => {
-            const dt = new Date(r.interval_start_utc);
+            // Add one hour to interval_start_utc to get hour end time
+            const startTime = new Date(r.interval_start_utc);
+            const endTime = new Date(startTime.getTime() + 60 * 60 * 1000); // Add 1 hour in milliseconds
+            
             return {
-              date: dt.toLocaleDateString('en-US', {
+              date: endTime.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 year: 'numeric', month: '2-digit', day: '2-digit'
               }),
-              day: dt.toLocaleDateString('en-US', {
+              day: endTime.toLocaleDateString('en-US', {
                 timeZone: 'America/New_York',
                 weekday: 'short'
               }),
-              endTime: dt.toLocaleTimeString('en-US', {
+              endTime: endTime.toLocaleTimeString('en-US', {
                 timeZone: 'America/New_York',
                 hour12: true,
                 hour: '2-digit',
@@ -562,8 +565,6 @@
             interval_end_utc,
             cp,
             operational_load,
-            dc_tie_imports,
-            dc_tie_exports,
             wholesale_storage_load
           `);
         if (error) throw error;
@@ -590,7 +591,7 @@
             <thead>
               <tr>
                 <th>End Time (CT)</th><th>CP Load (MW)</th>
-                <th>Op. Load</th><th>DC In</th><th>DC Out</th><th>WSL</th>
+                <th>Op. Load</th><th>WSL</th>
               </tr>
             </thead>
             <tbody>
@@ -601,8 +602,6 @@
                     <td>${dt.toLocaleString('en-US',{timeZone:'America/Chicago'})}</td>
                     <td>${d.cp.toLocaleString(undefined,{minimumFractionDigits:3})}</td>
                     <td>${d.operational_load?.toLocaleString(undefined,{minimumFractionDigits:3})||''}</td>
-                    <td>${d.dc_tie_imports?.toLocaleString(undefined,{minimumFractionDigits:3})||''}</td>
-                    <td>${d.dc_tie_exports?.toLocaleString(undefined,{minimumFractionDigits:3})||''}</td>
                     <td>${d.wholesale_storage_load?.toLocaleString(undefined,{minimumFractionDigits:3})||''}</td>
                   </tr>`;
               }).join('')}
